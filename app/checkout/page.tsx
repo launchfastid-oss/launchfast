@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -9,35 +9,24 @@ const UPSELLS = [
   { key: 'pt_registration', label: 'Pengurusan PT Perorangan + NIB', desc: 'Admin kami urus semua dokumen legal kamu', price: 750000 },
 ]
 
-declare global {
-  interface Window {
-    snap: { pay: (token: string, options: Record<string, unknown>) => void }
-  }
-}
+declare global { interface Window { snap: { pay: (t: string, o: Record<string, unknown>) => void } } }
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const searchParams = useSearchParams()
   const onboardingId = searchParams.get('onboarding')
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const basePrice = 1000000
   const total = basePrice + UPSELLS.filter(u => selected[u.key]).reduce((sum, u) => sum + u.price, 0)
-
   function fmt(n: number) { return 'Rp ' + n.toLocaleString('id-ID') }
 
   async function handlePay() {
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     try {
       const res = await fetch('/api/create-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          onboarding_id: onboardingId,
-          upsells: Object.keys(selected).filter(k => selected[k])
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ onboarding_id: onboardingId, upsells: Object.keys(selected).filter(k => selected[k]) })
       })
       const data = await res.json()
       if (data.snap_token && window.snap) {
@@ -47,14 +36,8 @@ export default function CheckoutPage() {
           onError: () => { setLoading(false); setError('Pembayaran gagal, silakan coba lagi.') },
           onClose: () => setLoading(false),
         })
-      } else {
-        setError(data.error || 'Gagal memulai pembayaran')
-        setLoading(false)
-      }
-    } catch {
-      setError('Terjadi kesalahan, coba lagi.')
-      setLoading(false)
-    }
+      } else { setError(data.error || 'Gagal memulai pembayaran'); setLoading(false) }
+    } catch { setError('Terjadi kesalahan, coba lagi.'); setLoading(false) }
   }
 
   return (
@@ -62,16 +45,13 @@ export default function CheckoutPage() {
       <div className="bg-white border-b border-[#E0E0E0]">
         <div className="max-w-2xl mx-auto px-4 py-4 flex justify-between items-center">
           <span className="text-lg font-bold"><span className="text-[#1D9E75]">Launchfast</span>.id</span>
-          <Link href={`/preview?onboarding=${onboardingId}`} className="text-sm text-[#555555]">â Kembali</Link>
+          <Link href={`/preview?onboarding=${onboardingId}`} className="text-sm text-[#555555]">← Kembali</Link>
         </div>
       </div>
-
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-[#1A1A1A] mb-2">Checkout</h1>
         <p className="text-sm text-[#555555] mb-8">Pilih paket yang sesuai kebutuhan bisnis kamu</p>
-
         {error && <div className="error-box mb-4">{error}</div>}
-
         <div className="space-y-4 mb-6">
           <div className="card border-[#1D9E75]">
             <div className="flex justify-between items-start">
@@ -80,50 +60,46 @@ export default function CheckoutPage() {
                   <span className="text-xs bg-[#1D9E75] text-white px-2 py-0.5 rounded-pill font-medium">Wajib</span>
                   <h3 className="font-semibold text-[#1A1A1A]">Brand Kit Lengkap</h3>
                 </div>
-                <p className="text-sm text-[#555555]">Strategi STP+SB7 Â· 3 Logo Â· 30 Konten Â· WA Scripts Â· Data Legal Â· Landing Page</p>
+                <p className="text-sm text-[#555555]">Strategi STP+SB7 · 3 Logo · 30 Konten · WA Scripts · Data Legal · Landing Page</p>
               </div>
               <span className="font-bold text-[#1A1A1A] whitespace-nowrap ml-4">Rp 1.000.000</span>
             </div>
           </div>
-
-          {UPSELLS.map(upsell => (
-            <div
-              key={upsell.key}
-              onClick={() => setSelected(prev => ({ ...prev, [upsell.key]: !prev[upsell.key] }))}
-              className={`card cursor-pointer transition-all ${selected[upsell.key] ? 'border-[#1D9E75] bg-[#E8F7F2]' : 'hover:border-[#1D9E75]'}`}
-            >
+          {UPSELLS.map(u => (
+            <div key={u.key} onClick={() => setSelected(prev => ({ ...prev, [u.key]: !prev[u.key] }))}
+              className={`card cursor-pointer transition-all ${selected[u.key] ? 'border-[#1D9E75] bg-[#E8F7F2]' : 'hover:border-[#1D9E75]'}`}>
               <div className="flex justify-between items-start">
                 <div className="flex items-start gap-3">
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 flex-shrink-0 transition-colors ${selected[upsell.key] ? 'border-[#1D9E75] bg-[#1D9E75]' : 'border-[#E0E0E0]'}`}>
-                    {selected[upsell.key] && <span className="text-white text-xs font-bold">â</span>}
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 flex-shrink-0 ${selected[u.key] ? 'border-[#1D9E75] bg-[#1D9E75]' : 'border-[#E0E0E0]'}`}>
+                    {selected[u.key] && <span className="text-white text-xs font-bold">✓</span>}
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-[#1A1A1A]">{upsell.label}</h3>
-                    <p className="text-sm text-[#555555]">{upsell.desc}</p>
-                  </div>
+                  <div><h3 className="font-semibold text-[#1A1A1A]">{u.label}</h3><p className="text-sm text-[#555555]">{u.desc}</p></div>
                 </div>
-                <span className="font-semibold text-[#EF9F27] whitespace-nowrap ml-4">+{fmt(upsell.price)}</span>
+                <span className="font-semibold text-[#EF9F27] whitespace-nowrap ml-4">+{fmt(u.price)}</span>
               </div>
             </div>
           ))}
         </div>
-
         <div className="card">
           <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#E0E0E0]">
             <span className="font-semibold text-[#1A1A1A]">Total Pembayaran</span>
             <span className="text-2xl font-bold text-[#1D9E75]">{fmt(total)}</span>
           </div>
           <button onClick={handlePay} disabled={loading} className="btn-primary w-full text-base py-3.5">
-            {loading ? 'Memproses...' : 'Bayar Sekarang â'}
+            {loading ? 'Memproses...' : 'Bayar Sekarang →'}
           </button>
-          <p className="text-xs text-center text-[#888888] mt-3">
-            QRIS Â· Transfer Bank Â· Kartu Kredit/Debit Â· Aman via Midtrans
-          </p>
+          <p className="text-xs text-center text-[#888888] mt-3">QRIS · Transfer Bank · Kartu Kredit/Debit · Aman via Midtrans</p>
         </div>
       </div>
-
-      {/* eslint-disable-next-line @next/next/no-sync-scripts */}
       <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY} />
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center"><p className="text-[#555555]">Memuat...</p></div>}>
+      <CheckoutContent />
+    </Suspense>
   )
 }
