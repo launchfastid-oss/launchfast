@@ -12,7 +12,7 @@ const QUESTIONS = [
   { step: 6, key: 'tone_of_voice', question: 'Tone of voice brand yang kamu inginkan?', type: 'choice', options: ['Profesional & Terpercaya','Hangat & Personal','Fun & Energik','Premium & Eksklusif','Santai & Friendly'] },
   { step: 7, key: 'price_range', question: 'Kisaran harga produk/jasa kamu?', hint: 'Contoh: Rp 15.000 - Rp 50.000 per porsi', type: 'textarea' },
   { step: 8, key: 'thirty_day_goal', question: 'Goal utama kamu dalam 30 hari pertama?', hint: 'Contoh: Dapat 50 pelanggan baru dan buka cabang ke-2', type: 'textarea' },
-]
+] as const
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -29,10 +29,17 @@ export default function OnboardingPage() {
     if (!value?.trim()) return
     setLoading(true); setError(null)
     const result = await saveOnboardingAnswer(q.step, q.key, value, onboardingId || undefined)
-    if ('error' in result) { setError(result.error); setLoading(false); return }
+    if ('error' in result) {
+      setError(result.error ?? 'Terjadi kesalahan')
+      setLoading(false)
+      return
+    }
     if (!onboardingId) setOnboardingId(result.id)
-    if (currentStep < QUESTIONS.length - 1) { setCurrentStep(currentStep + 1) }
-    else { router.push(`/preview?onboarding=${result.id}`) }
+    if (currentStep < QUESTIONS.length - 1) {
+      setCurrentStep(currentStep + 1)
+    } else {
+      router.push(`/preview?onboarding=${result.id}`)
+    }
     setLoading(false)
   }
 
@@ -52,17 +59,26 @@ export default function OnboardingPage() {
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-xl">
           <div className="card">
-            <div className="mb-2"><span className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide">Pertanyaan {currentStep + 1}</span></div>
+            <div className="mb-2">
+              <span className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide">
+                Pertanyaan {currentStep + 1}
+              </span>
+            </div>
             <h2 className="text-xl font-bold text-[#1A1A1A] mb-2">{q.question}</h2>
-            {q.hint && <p className="text-sm text-[#888888] mb-5">{q.hint}</p>}
+            {'hint' in q && q.hint && <p className="text-sm text-[#888888] mb-5">{q.hint}</p>}
             {error && <div className="error-box mb-4">{error}</div>}
             {q.type === 'textarea' ? (
-              <textarea value={answers[q.key] || ''} onChange={e => setAnswers({ ...answers, [q.key]: e.target.value })}
-                placeholder="Tulis jawaban kamu di sini..." rows={4} className="input-field resize-none"/>
+              <textarea
+                value={answers[q.key] || ''}
+                onChange={e => setAnswers({ ...answers, [q.key]: e.target.value })}
+                placeholder="Tulis jawaban kamu di sini..."
+                rows={4}
+                className="input-field resize-none"
+              />
             ) : (
               <div className="space-y-2">
-                {q.options?.map(option => (
-                  <button key={option} onClick={() => setAnswers({ ...answers, [q.key]: option })}
+                {'options' in q && q.options.map((option: string) => (
+                  <button key={option} type="button" onClick={() => setAnswers({ ...answers, [q.key]: option })}
                     className={`w-full text-left px-4 py-3 rounded-lg border text-sm font-medium transition-all ${answers[q.key] === option ? 'border-[#1D9E75] bg-[#E8F7F2] text-[#1D9E75]' : 'border-[#E0E0E0] text-[#1A1A1A] hover:border-[#1D9E75]'}`}>
                     {option}
                   </button>
@@ -70,8 +86,12 @@ export default function OnboardingPage() {
               </div>
             )}
             <div className="flex gap-3 mt-6">
-              {currentStep > 0 && <button onClick={() => setCurrentStep(currentStep - 1)} className="btn-secondary flex-1">Kembali</button>}
-              <button onClick={handleNext} disabled={loading || !answers[q.key]?.trim()} className="btn-primary flex-1">
+              {currentStep > 0 && (
+                <button type="button" onClick={() => setCurrentStep(currentStep - 1)} className="btn-secondary flex-1">
+                  Kembali
+                </button>
+              )}
+              <button type="button" onClick={handleNext} disabled={loading || !answers[q.key]?.trim()} className="btn-primary flex-1">
                 {loading ? 'Menyimpan...' : currentStep === QUESTIONS.length - 1 ? 'Lihat preview brand kit' : 'Lanjut'}
               </button>
             </div>
