@@ -10,7 +10,8 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setLoading(true); setError(null)
+    setLoading(true)
+    setError(null)
     const result = await register(new FormData(e.currentTarget))
     if (result?.error) { setError(result.error); setLoading(false) }
   }
@@ -25,7 +26,7 @@ export default function RegisterPage() {
       <h1 className="text-xl font-bold text-[#1A1A1A] mb-1">Buat akun gratis</h1>
       <p className="text-sm text-[#555555] mb-6">Lihat preview brand kit bisnis kamu — gratis</p>
       {error && <div className="error-box mb-4">{error}</div>}
-      <button onClick={handleGoogle} disabled={googleLoading}
+      <button type="button" onClick={handleGoogle} disabled={googleLoading}
         className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-[#E0E0E0] rounded-lg text-sm font-medium text-[#1A1A1A] hover:bg-[#F5F5F5] transition-colors mb-5 disabled:opacity-50">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
           <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/>
@@ -52,7 +53,9 @@ export default function RegisterPage() {
           <label className="block text-sm font-medium text-[#1A1A1A] mb-1.5">Password</label>
           <input name="password" type="password" required placeholder="Min. 8 karakter" minLength={8} className="input-field"/>
         </div>
-        <button type="submit" disabled={loading} className="btn-primary w-full">{loading ? 'Membuat akun...' : 'Buat akun & mulai'}</button>
+        <button type="submit" disabled={loading} className="btn-primary w-full">
+          {loading ? 'Membuat akun...' : 'Buat akun & mulai'}
+        </button>
       </form>
       <p className="mt-5 text-center text-sm text-[#555555]">
         Sudah punya akun?{' '}
