@@ -7,7 +7,7 @@ export async function POST(request: Request) {
 
   async function callAI(prompt: string, maxTokens = 2000): Promise<Record<string, unknown>> {
     const res = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: maxTokens,
       system: 'Kamu adalah brand strategist expert untuk UMKM Indonesia. Kembalikan HANYA JSON valid tanpa markdown atau backtick.',
       messages: [{ role: 'user', content: prompt }]
