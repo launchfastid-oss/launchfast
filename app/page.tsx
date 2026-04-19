@@ -1,6 +1,22 @@
 import Link from 'next/link'
 
 export default function HomePage() {
+  const features = [
+    { title: 'Strategi Brand (STP + SB7)', desc: 'Positioning, targeting, dan StoryBrand framework yang tepat untuk bisnis kamu' },
+    { title: 'Visual Identity', desc: '5 color palette, typography, dan 3 konsep logo yang sesuai brand kamu' },
+    { title: '30 Hari Konten Sosmed', desc: 'Kalender konten lengkap untuk Instagram, TikTok, dan Facebook' },
+    { title: 'WA Scripts Siap Kirim', desc: 'Script sapaan, follow-up, closing objection, dan broadcast template' },
+    { title: 'Checklist 30 Hari', desc: 'To-do list peluncuran bisnis mingguan yang bisa langsung dijalankan' },
+    { title: 'Panduan Legal', desc: 'Rekomendasi struktur bisnis, perizinan NIB, dan kewajiban pajak' },
+    { title: 'Landing Page AI', desc: 'Halaman web siap publish yang dibuat otomatis dari brand strategy kamu' },
+  ]
+
+  const steps = [
+    { step: '1', title: 'Jawab 8 Pertanyaan', desc: 'Ceritakan bisnis kamu — nama, target customer, produk, dan tone. Cuma 2 menit.' },
+    { step: '2', title: 'AI Generate Brand Kit', desc: 'Claude AI menganalisis bisnis kamu dan membuat semua konten secara otomatis.' },
+    { step: '3', title: 'Download dan Gunakan', desc: 'Semua siap pakai. Copy script WA, posting konten, atau deploy landing page langsung.' },
+  ]
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
@@ -9,7 +25,7 @@ export default function HomePage() {
           <span className="text-xl font-bold"><span className="text-[#1D9E75]">Launchfast</span>.id</span>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm text-[#555555] hover:text-[#1A1A1A]">Masuk</Link>
-            <Link href="/register" className="btn-primary text-sm py-2 px-5">Coba Gratis →</Link>
+            <Link href="/register" className="btn-primary text-sm py-2 px-5">Coba Gratis</Link>
           </div>
         </div>
       </nav>
@@ -18,7 +34,7 @@ export default function HomePage() {
       <section className="bg-gradient-to-b from-[#F0FBF7] to-white py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-[#E8F7F2] text-[#1D9E75] text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
-            ⚡ AI Brand Kit dalam 2 Menit
+            AI Brand Kit dalam 2 Menit
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-[#1A1A1A] leading-tight mb-6">
             Brand Kit Lengkap untuk<br />
@@ -29,21 +45,21 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/register" className="btn-primary text-base py-3.5 px-8">
-              Mulai Gratis — Lihat Preview ✨
+              Mulai Gratis — Lihat Preview
             </Link>
-            <Link href="#cara-kerja" className="btn-secondary text-base py-3.5 px-8">
+            <a href="#cara-kerja" className="btn-secondary text-base py-3.5 px-8">
               Lihat Cara Kerjanya
-            </Link>
+            </a>
           </div>
           <p className="text-xs text-[#888888] mt-4">Preview gratis. Bayar hanya kalau suka. Rp 1.000.000 sekali bayar.</p>
         </div>
       </section>
 
-      {/* Social proof numbers */}
+      {/* Stats */}
       <section className="border-y border-[#E0E0E0] py-10 px-4">
         <div className="max-w-4xl mx-auto grid grid-cols-3 gap-6 text-center">
           <div>
-            <p className="text-3xl font-bold text-[#1D9E75]">6</p>
+            <p className="text-3xl font-bold text-[#1D9E75]">7</p>
             <p className="text-sm text-[#555555] mt-1">Konten Siap Pakai</p>
           </div>
           <div>
@@ -57,7 +73,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* What you get */}
+      {/* Features */}
       <section className="py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
@@ -65,17 +81,11 @@ export default function HomePage() {
             <p className="text-[#555555]">Brand kit lengkap yang biasanya butuh 3 konsultan dan jutaan rupiah</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              { icon: '🎯', title: 'Strategi Brand (STP + SB7)', desc: 'Positioning, targeting, dan StoryBrand framework yang tepat untuk bisnis kamu' },
-              { icon: '🎨', title: 'Visual Identity', desc: '5 color palette, typography, dan 3 konsep logo yang sesuai brand kamu' },
-              { icon: '📅', title: '30 Hari Konten Sosmed', desc: 'Kalender konten lengkap untuk Instagram, TikTok, dan Facebook' },
-              { icon: '💬', title: 'WA Scripts Siap Kirim', desc: 'Script sapaan, follow-up, closing objection, dan broadcast template' },
-              { icon: '✅', title: 'Checklist 30 Hari', desc: 'To-do list peluncuran bisnis mingguan yang bisa langsung dijalankan' },
-              { icon: '⚖️', title: 'Panduan Legal', desc: 'Rekomendasi struktur bisnis, perizinan NIB, dan kewajiban pajak' },
-              { icon: '🌐', title: 'Landing Page AI', desc: 'Halaman web siap publish yang dibuat otomatis dari brand strategy kamu' },
-            ].map((item, i) => (
+            {features.map((item, i) => (
               <div key={i} className="card hover:border-[#1D9E75] transition-all">
-                <div className="text-3xl mb-3">{item.icon}</div>
+                <div className="w-8 h-8 bg-[#E8F7F2] rounded-lg flex items-center justify-center mb-3">
+                  <span className="text-sm font-bold text-[#1D9E75]">{i + 1}</span>
+                </div>
                 <h3 className="font-bold text-[#1A1A1A] mb-2">{item.title}</h3>
                 <p className="text-sm text-[#555555] leading-relaxed">{item.desc}</p>
               </div>
@@ -92,11 +102,7 @@ export default function HomePage() {
             <p className="text-[#555555]">3 langkah, brand kit kamu siap</p>
           </div>
           <div className="space-y-5">
-            {[
-              { step: '1', title: 'Jawab 8 Pertanyaan', desc: 'Ceritakan bisnis kamu — nama, target customer, produk, dan tone yang diinginkan. Cuma 2 menit.' },
-              { step: '2', title: 'AI Generate Brand Kit', desc: 'Claude AI (model terkuat Anthropic) menganalisis bisnis kamu dan membuat semua konten secara otomatis.' },
-              { step: '3', title: 'Download & Gunakan', desc: 'Semua sudah siap pakai. Copy-paste script WA, posting konten, atau deploy landing page langsung.' },
-            ].map((item) => (
+            {steps.map((item) => (
               <div key={item.step} className="card flex items-start gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#1D9E75] text-white flex items-center justify-center font-bold text-lg flex-shrink-0">
                   {item.step}
@@ -120,7 +126,7 @@ export default function HomePage() {
             <div className="text-center mb-6">
               <p className="text-sm text-[#888888] mb-1">Brand Kit Lengkap</p>
               <p className="text-5xl font-bold text-[#1A1A1A]">Rp 1 juta</p>
-              <p className="text-sm text-[#888888] mt-2">sekali bayar • semua fitur • bukan langganan</p>
+              <p className="text-sm text-[#888888] mt-2">sekali bayar · semua fitur · bukan langganan</p>
             </div>
             <ul className="space-y-3 mb-8 text-left">
               {[
@@ -129,12 +135,12 @@ export default function HomePage() {
                 '30 konten sosmed siap posting',
                 '10+ WhatsApp scripts',
                 'Checklist peluncuran 30 hari',
-                'Panduan legal & perizinan',
+                'Panduan legal dan perizinan',
                 'Landing page AI siap publish',
                 'Regenerasi konten 3x gratis per tab',
               ].map((f, i) => (
                 <li key={i} className="flex items-center gap-2 text-sm text-[#1A1A1A]">
-                  <span className="text-[#1D9E75] font-bold">✓</span> {f}
+                  <span className="text-[#1D9E75] font-bold flex-shrink-0">v</span> {f}
                 </li>
               ))}
             </ul>
@@ -146,13 +152,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Final CTA */}
+      {/* CTA */}
       <section className="bg-[#1D9E75] py-16 px-4 text-white text-center">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold mb-4">Siap Bangun Brand yang Kuat?</h2>
           <p className="text-white/80 mb-8">Bergabung dengan ribuan UMKM Indonesia yang sudah punya brand kit profesional.</p>
           <Link href="/register" className="bg-white text-[#1D9E75] font-bold py-3.5 px-10 rounded-lg hover:bg-gray-50 transition-colors inline-block text-base">
-            Buat Brand Kit Gratis →
+            Buat Brand Kit Gratis
           </Link>
         </div>
       </section>
@@ -161,7 +167,7 @@ export default function HomePage() {
       <footer className="border-t border-[#E0E0E0] py-8 px-4">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <span className="font-bold text-[#1A1A1A]"><span className="text-[#1D9E75]">Launchfast</span>.id</span>
-          <p className="text-xs text-[#888888]">© 2025 Launchfast.id · AI Brand Kit untuk UMKM Indonesia</p>
+          <p className="text-xs text-[#888888]">2025 Launchfast.id · AI Brand Kit untuk UMKM Indonesia</p>
           <div className="flex gap-4 text-xs text-[#888888]">
             <Link href="/login" className="hover:text-[#1A1A1A]">Masuk</Link>
             <Link href="/register" className="hover:text-[#1A1A1A]">Daftar</Link>
