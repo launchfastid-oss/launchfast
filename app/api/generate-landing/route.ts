@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const success = sb7?.success as string || ''
 
     const res = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 4000,
       system: 'Kamu adalah web developer expert. Buat landing page HTML single-file yang profesional, mobile-responsive, dan siap publish. Kembalikan HANYA kode HTML lengkap tanpa penjelasan.',
       messages: [{
