@@ -53,7 +53,7 @@ Kembalikan HANYA JSON valid ini (tanpa markdown, tanpa backtick):
 }`
 
     const response = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 1500,
       system: 'Kembalikan HANYA JSON valid tanpa markdown atau backtick.',
       messages: [{ role: 'user', content: prompt }]
