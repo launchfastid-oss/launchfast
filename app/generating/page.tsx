@@ -4,8 +4,13 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const MSGS = [
-  'Menganalisis bisnis kamu...', 'Menyusun strategi brand...', 'Merancang visual identity...',
-  'Menyusun konten 30 hari...', 'Membuat WA scripts...', 'Menyiapkan data legal...', 'Finalisasi brand kit...',
+  'Menganalisis bisnis kamu...',
+  'Menyusun strategi brand...',
+  'Merancang visual identity...',
+  'Menyusun konten 30 hari...',
+  'Membuat WA scripts...',
+  'Menyiapkan data legal...',
+  'Finalisasi brand kit...',
 ]
 
 function GeneratingContent() {
@@ -22,20 +27,20 @@ function GeneratingContent() {
   useEffect(() => {
     if (!orderId) return
     const supabase = createClient()
-    const ch = supabase.channel(`bk_order_${orderId}`)
+    const ch = supabase.channel('bk_order_' + orderId)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'brand_kits' }, (p) => {
         const k = p.new as { id: string; order_id: string; is_preview_only: boolean }
-        if (k.order_id === orderId && !k.is_preview_only) router.push(`/brand-kit/${k.id}`)
+        if (k.order_id === orderId && !k.is_preview_only) router.push('/brand-kit/' + k.id)
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'brand_kits' }, (p) => {
         const k = p.new as { id: string; order_id: string; is_preview_only: boolean }
-        if (k.order_id === orderId && !k.is_preview_only) router.push(`/brand-kit/${k.id}`)
+        if (k.order_id === orderId && !k.is_preview_only) router.push('/brand-kit/' + k.id)
       })
       .subscribe()
     const poll = setInterval(async () => {
       const { data } = await supabase.from('brand_kits').select('id, is_preview_only')
         .eq('order_id', orderId).eq('is_preview_only', false).single()
-      if (data) router.push(`/brand-kit/${data.id}`)
+      if (data) router.push('/brand-kit/' + data.id)
     }, 5000)
     return () => { supabase.removeChannel(ch); clearInterval(poll) }
   }, [orderId, router])
@@ -46,7 +51,9 @@ function GeneratingContent() {
         <div className="relative w-20 h-20 mx-auto mb-6">
           <div className="absolute inset-0 border-4 border-[#E0E0E0] rounded-full" />
           <div className="absolute inset-0 border-4 border-[#1D9E75] rounded-full border-t-transparent animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center text-3xl">⚡</div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-2xl font-bold text-[#1D9E75]">AI</span>
+          </div>
         </div>
         <h2 className="text-xl font-bold text-[#1A1A1A] mb-3">AI sedang membangun brand kit kamu</h2>
         <p className="text-sm text-[#1D9E75] font-medium mb-8">{MSGS[idx]}</p>
