@@ -7,6 +7,7 @@ import { ContentTab } from './tab-content'
 import { WhatsappTab } from './tab-whatsapp'
 import { ChecklistTab } from './tab-checklist'
 import { LegalTab } from './tab-legal'
+import { LandingTab } from './tab-landing'
 
 interface BrandKit {
   id: string
@@ -18,6 +19,7 @@ interface BrandKit {
   whatsapp_data: Record<string, unknown> | null
   checklist_data: Record<string, unknown> | null
   legal_data: Record<string, unknown> | null
+  landing_page_html: string | null
   regen_counts: Record<string, number>
 }
 
@@ -28,6 +30,7 @@ const TABS = [
   { key: 'whatsapp', label: 'WA Scripts', icon: 'ð¬' },
   { key: 'checklist', label: 'Checklist', icon: 'â' },
   { key: 'legal', label: 'Legal', icon: 'âï¸' },
+  { key: 'landing', label: 'Landing Page', icon: 'ð' },
 ]
 
 export default function BrandKitClient({ kitId, userId }: { kitId: string; userId: string }) {
@@ -68,6 +71,7 @@ export default function BrandKitClient({ kitId, userId }: { kitId: string; userI
 
   const tabData = { strategy: kit.strategy_data, visual: kit.visual_data, content: kit.content_data, whatsapp: kit.whatsapp_data, checklist: kit.checklist_data, legal: kit.legal_data }[activeTab] as Record<string, unknown> | null
   const isGenerating = tabData && (tabData as Record<string, unknown>).status === 'generating'
+  const isLandingTab = activeTab === 'landing'
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
@@ -78,7 +82,6 @@ export default function BrandKitClient({ kitId, userId }: { kitId: string; userI
             <span className="text-[#888888] text-sm ml-3">/ {kit.business_name}</span>
           </div>
           <div className="flex items-center gap-3">
-            <button className="btn-secondary text-sm py-2 px-3">â¬ ZIP</button>
             <Link href="/dashboard" className="text-sm text-[#555555] hover:text-[#1A1A1A]">Dashboard</Link>
           </div>
         </div>
@@ -86,7 +89,7 @@ export default function BrandKitClient({ kitId, userId }: { kitId: string; userI
           <div className="flex gap-0 overflow-x-auto">
             {TABS.map(t => (
               <button key={t.key} onClick={() => setActiveTab(t.key)}
-                className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === t.key ? 'border-[#1D9E75] text-[#1D9E75]' : 'border-transparent text-[#555555] hover:text-[#1A1A1A]'}`}>
+                className={`flex-shrink-0 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === t.key ? 'border-[#1D9E75] text-[#1D9E75]' : 'border-transparent text-[#555555] hover:text-[#1A1A1A]'}`}>
                 {t.icon} {t.label}
               </button>
             ))}
@@ -95,7 +98,9 @@ export default function BrandKitClient({ kitId, userId }: { kitId: string; userI
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6">
-        {isGenerating ? (
+        {isLandingTab ? (
+          <LandingTab kitId={kitId} initialHtml={kit.landing_page_html} />
+        ) : isGenerating ? (
           <div className="card text-center py-16"><div className="text-4xl mb-4 animate-pulse">â¡</div><h2 className="text-xl font-bold text-[#1A1A1A] mb-2">AI sedang menyiapkan konten ini...</h2><p className="text-sm text-[#555555]">Refresh halaman dalam 1-2 menit</p></div>
         ) : !tabData ? (
           <div className="card text-center py-16"><div className="text-4xl mb-4">ð§</div><h2 className="text-xl font-bold text-[#1A1A1A] mb-2">Konten belum tersedia</h2></div>
