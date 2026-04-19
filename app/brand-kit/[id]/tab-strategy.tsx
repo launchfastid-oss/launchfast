@@ -1,15 +1,14 @@
-'use client'
-import { useState } from 'react'
-
 export function StrategyTab({ data }: { data: Record<string, unknown> }) {
   const d = data as Record<string, unknown>
   const stp = d.stp as Record<string, string>
   const sb7 = d.sb7 as Record<string, unknown>
+  const brandStory = d.brand_story as string | undefined
+  const goldenOneLiner = d.golden_one_liner as string | undefined
   return (
     <div className="space-y-4">
       <div className="card bg-[#1D9E75] text-white">
         <p className="text-xs font-semibold uppercase tracking-wide opacity-80 mb-2">Golden One-Liner</p>
-        <p className="text-2xl font-bold leading-relaxed">"{d.golden_one_liner as string}"</p>
+        <p className="text-2xl font-bold leading-relaxed">"{goldenOneLiner}"</p>
       </div>
       <div className="card">
         <p className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide mb-3">Strategi STP</p>
@@ -35,10 +34,10 @@ export function StrategyTab({ data }: { data: Record<string, unknown> }) {
           </div>
         </div>
       )}
-      {d.brand_story && (
+      {brandStory && (
         <div className="card">
           <p className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide mb-3">Brand Story</p>
-          <p className="text-sm text-[#555555] leading-relaxed whitespace-pre-line">{d.brand_story as string}</p>
+          <p className="text-sm text-[#555555] leading-relaxed whitespace-pre-line">{brandStory}</p>
         </div>
       )}
     </div>
@@ -58,7 +57,7 @@ export function VisualTab({ data }: { data: Record<string, unknown> }) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {colors.map((c, i) => (
               <div key={i} className="text-center">
-                <div className="w5full h-16 rounded-lg border border-[#E0E0E0] mb-2" style={{ backgroundColor: c.hex }} />
+                <div className="w-full h-16 rounded-lg border border-[#E0E0E0] mb-2" style={{ backgroundColor: c.hex }} />
                 <p className="text-xs font-bold text-[#1A1A1A]">{c.name}</p>
                 <p className="text-xs font-mono text-[#888888]">{c.hex}</p>
                 <p className="text-xs text-[#555555] mt-1">{c.usage}</p>
