@@ -191,6 +191,8 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
       }
 
       const requestId = data.request_id
+      const statusUrl = data.status_url || ''
+      const responseUrl = data.response_url || ''
       setPollMsg('Job dikirim! Menunggu LTX Video memproses...')
 
       // Step 2: Poll setiap 3 detik sampai selesai (max 3 menit)
@@ -206,7 +208,7 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ brand_kit_id: kitId, post_index: postIndex, request_id: requestId }),
+          body: JSON.stringify({ brand_kit_id: kitId, post_index: postIndex, request_id: requestId, status_url: statusUrl, response_url: responseUrl }),
         })
         const pollData = await pollRes.json()
 
@@ -222,7 +224,7 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
           setGenVideo(false)
           return
         }
-        // status === 'pending' → lanjut poll
+        // status === 'pending' â lanjut poll
       }
 
       setVideoError('Timeout setelah 3 menit. Coba lagi.')
@@ -271,7 +273,7 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
           <p style={{ fontSize: '13px', color: '#1A1A1A', fontWeight: 600, margin: '0 0 2px' }}>
             {pollMsg || 'LTX Video sedang animate foto...'}
           </p>
-          <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>Async queue — halaman tidak perlu stay terbuka</p>
+          <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>Async queue â halaman tidak perlu stay terbuka</p>
         </div>
       )}
 
