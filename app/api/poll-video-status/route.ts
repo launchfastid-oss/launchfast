@@ -15,32 +15,49 @@ export async function POST(request: Request) {
 
     const falKey = process.env.FAL_KEY!
 
-    // Cek status di fal queue
+    // fal queue status — pakai GET bukan POST
     const statusRes = await fetch(
       `https://queue.fal.run/fal-ai/ltx-video/image-to-video/requests/${request_id}/status`,
-      { headers: { 'Authorization': 'Key ' + falKey } }
+      {
+        method: 'GET',
+        headers: { 'Authorization': 'Key ' + falKey },
+      }
     )
 
     if (!statusRes.ok) {
-      return NextResponse.json({ status: 'error', error: 'Status check failed: ' + statusRes.status })
+      const errText = await statusRes.text()
+      console.error('fal status error:', statusRes.status, errText.slice(0, 200))
+      return NextResponse.json({ status: 'error', error: 'Status check failed: ' + statusRes.status + ' ' + errText.slice(0, 100) })
     }
 
     const statusData = await statusRes.json()
     const queueStatus = statusData.status // 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
 
-    console.log('fal queue status:', queueStatus, 'for request:', request_id)
+    console.log('fal queue status:', queueStatus, 'request_id:', request_id)
 
     if (queueStatus === 'COMPLETED') {
-      // Ambil hasil video
+      // Ambil hasil — juga pakai GET
       const resultRes = await fetch(
         `https://queue.fal.run/fal-ai/ltx-video/image-to-video/requests/${request_id}`,
-        { headers: { 'Authorization': 'Key ' + falKey } }
+        {
+          method: 'GET',
+          headers: { 'Authorization': 'Key ' + falKey },
+        }
       )
+
+      if (!resultRes.ok) {
+        const errText = await resultRes.text()
+        console.error('fal result error:', resultRes.status, errText.slice(0, 200))
+        return NextResponse.json({ status: 'error', error: 'Result fetch failed: ' + resultRes.status })
+      }
+
       const resultData = await resultRes.json()
       const videoUrl = resultData.video?.url || ''
 
+      console.log('Video URL:', videoUrl.slice(0, 80))
+
       if (!videoUrl) {
-        return NextResponse.json({ status: 'error', error: 'No video URL in completed result' })
+        return NextResponse.json({ status: 'error', error: 'No video URL in result: ' + JSON.stringify(resultData).slice(0, 200) })
       }
 
       // Simpan video URL ke database
@@ -66,26 +83,24 @@ export async function POST(request: Request) {
         }
       }
 
-      return NextResponse.json({
-        status: 'completed',
-        video_url: videoUrl,
-      })
+      return NextResponse.json({ status: 'completed', video_url: videoUrl })
     }
 
     if (queueStatus === 'FAILED') {
-      return NextResponse.json({
-        status: 'error',
-        error: statusData.error || 'Video generation failed',
-      })
+      const errMsg = statusData.error || statusData.detail || 'Video generation failed'
+      console.error('fal job FAILED:', errMsg)
+      return NextResponse.json({ status: 'error', error: errMsg })
     }
 
-    // Masih IN_QUEUE atau IN_PROGRESS
+    // IN_QUEUE atau IN_PROGRESS — masih jalan
     return NextResponse.json({
       status: 'pending',
       queue_status: queueStatus,
+      queue_position: statusData.queue_position,
     })
+
   } catch (err) {
-    console.error('poll-video-status:', err)
+    console.error('poll-video-status error:', err)
     return NextResponse.json({ status: 'error', error: String(err) })
   }
 }
