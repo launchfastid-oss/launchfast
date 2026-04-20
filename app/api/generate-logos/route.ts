@@ -5,35 +5,25 @@ import Anthropic from '@anthropic-ai/sdk'
 
 export const maxDuration = 60
 
-async function generateLogoWithFal(prompt: string, style: string): Promise<string> {
-  const falKey = process.env.FAL_KEY
-  if (!falKey) throw new Error('FAL_KEY not set')
-
-  const body = {
-    prompt,
-    image_size: { width: 1024, height: 1024 },
-    style: style,
-    colors: [],
-  }
-
+// Generate satu logo via fal.ai Recraft V3
+async function falRecraft(prompt: string, style: string): Promise<string> {
+  const key = process.env.FAL_KEY
+  if (!key) throw new Error('FAL_KEY not configured')
   const res = await fetch('https://fal.run/fal-ai/recraft/v3/text-to-image', {
     method: 'POST',
-    headers: {
-      'Authorization': 'Key ' + falKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    headers: { 'Authorization': 'Key ' + key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt,
+      image_size: { width: 1024, height: 1024 },
+      style,
+      num_images: 1,
+    }),
   })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error('fal.ai error: ' + res.status + ' ' + err.slice(0, 200))
-  }
-
+  if (!res.ok) throw new Error('fal error ' + res.status + ': ' + await res.text().then(t => t.slice(0,200)))
   const data = await res.json()
-  const imageUrl = data.images?.[0]?.url
-  if (!imageUrl) throw new Error('No image URL in fal response')
-  return imageUrl
+  const url = data.images?.[0]?.url
+  if (!url) throw new Error('no image url from fal')
+  return url
 }
 
 export async function POST(request: Request) {
@@ -44,111 +34,99 @@ export async function POST(request: Request) {
 
     const { brand_kit_id } = await request.json()
     const adminClient = createAdminClient()
-
     const { data: kit } = await adminClient
       .from('brand_kits')
       .select('business_name, visual_data, strategy_data')
-      .eq('id', brand_kit_id)
-      .single()
+      .eq('id', brand_kit_id).single()
     if (!kit) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const visual = kit.visual_data as Record<string, unknown> || {}
-    const strategy = kit.strategy_data as Record<string, unknown> || {}
-    const colors = (visual?.colors as Array<{hex: string, name: string}>) || []
-    const concepts = (visual?.logo_concepts as Array<{name: string, description: string, style: string}>) || []
-    const brandPersonality = (strategy?.brand_personality as string[]) || []
-    const oneLiner = (strategy?.golden_one_liner as string) || kit.business_name
-    const mood = (visual?.visual_mood as string) || 'professional and modern'
+    const visual = (kit.visual_data || {}) as Record<string, unknown>
+    const strategy = (kit.strategy_data || {}) as Record<string, unknown>
+    const colors = (visual.colors as Array<{hex:string,name:string,usage:string}>) || []
+    const concepts = (visual.logo_concepts as Array<{name:string,description:string,style:string}>) || []
+    const personality = ((strategy.brand_personality as string[]) || []).join(', ')
+    const oneLiner = (strategy.golden_one_liner as string) || kit.business_name
+    const mood = (visual.visual_mood as string) || 'professional modern'
 
-    const primaryColor = colors[0]?.hex || '#1D9E75'
-    const secondaryColor = colors[1]?.hex || '#2C5F2E'
-    const accentColor = colors[2]?.hex || '#F4A261'
+    const primary = colors[0]?.hex || '#1D9E75'
+    const secondary = colors[1]?.hex || '#2C5F2E'
+    const accent = colors[2]?.hex || '#F4A261'
 
-    // Map concept styles ke fal.ai Recraft styles
-    const falStyles = [
-      'vector_illustration',
-      'vector_illustration/line_art',
-      'vector_illustration/flat_2',
-    ]
-
+    // Gunakan Claude untuk buat prompt logo yang sangat detail dan profesional
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-    // Generate detailed prompt untuk tiap logo concept menggunakan Claude
-    const promptRes = await anthropic.messages.create({
+    const promptGenRes = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
-      system: 'Kamu adalah creative director logo. Buat 3 prompt logo yang sangat detail untuk image generation AI. Return HANYA JSON array dengan 3 string prompt dalam bahasa Inggris.',
+      max_tokens: 800,
+      system: 'You are a world-class brand identity designer and AI prompt engineer. Create extremely detailed, professional logo prompts for Recraft V3 image generation.',
       messages: [{
         role: 'user',
-        content: `Business: ${kit.business_name}
+        content: `Create 3 distinct professional logo prompts for this brand:
+Business: ${kit.business_name}
+Industry: Food & Culinary (Indonesian)
 Tagline: ${oneLiner}
-Brand personality: ${brandPersonality.join(', ')}
+Brand personality: ${personality}
+Primary color: ${primary}, Secondary: ${secondary}, Accent: ${accent}
 Visual mood: ${mood}
-Primary color: ${primaryColor}
-Concept 1: ${concepts[0]?.description || 'minimalist and symbolic logo'}
-Concept 2: ${concepts[1]?.description || 'modern geometric logo'}
-Concept 3: ${concepts[2]?.description || 'warm illustrative logo'}
+Concepts: 
+1. ${concepts[0]?.name || 'Minimalist'}: ${concepts[0]?.description || 'clean simple logo'}
+2. ${concepts[1]?.name || 'Modern'}: ${concepts[1]?.description || 'geometric modern logo'}  
+3. ${concepts[2]?.name || 'Warm'}: ${concepts[2]?.description || 'warm illustrative logo'}
 
-Create 3 professional logo design prompts. Each prompt must:
-- Be specific about the visual elements, shapes, style
-- Include: "professional logo design, vector art, clean background, isolated on white, brand identity"
-- Mention the primary color ${primaryColor}
-- Be suitable for a Indonesian food/business brand
-- Max 60 words each
+Each prompt MUST:
+- Be in English
+- Start with the core visual element description
+- Include color hex codes
+- Specify: "professional logo design, vector illustration, white background, isolated, brand identity, no text"
+- Be highly specific about shapes, style, composition
+- Max 50 words
 
-Return ONLY a JSON array: ["prompt1", "prompt2", "prompt3"]`
+Return ONLY a JSON array of 3 strings: ["prompt1","prompt2","prompt3"]`
       }]
     })
-
+    
     let prompts: string[]
     try {
-      const raw = promptRes.content[0].type === 'text' ? promptRes.content[0].text : '[]'
+      const raw = promptGenRes.content[0].type === 'text' ? promptGenRes.content[0].text : ''
       const match = raw.match(/\[[\s\S]*\]/)
       prompts = JSON.parse(match ? match[0] : '[]')
+      if (!Array.isArray(prompts) || prompts.length < 3) throw new Error('invalid')
     } catch {
-      // Fallback prompts jika parse gagal
+      // Fallback: buat prompts langsung tanpa AI
+      const bizShort = kit.business_name.split(',')[0].trim()
       prompts = [
-        `Professional minimalist logo for "${kit.business_name}", Indonesian food brand. Clean geometric shapes, warm colors ${primaryColor}, vector art style, isolated on white background, modern brand identity design`,
-        `Modern logo design for "${kit.business_name}", Indonesian culinary brand. Line art style, ${primaryColor} primary color, elegant typography, professional vector illustration, white background`,
-        `Warm illustrative logo for "${kit.business_name}", Indonesian food business. Flat design style, ${primaryColor} and ${accentColor} colors, friendly and approachable, clean vector art, isolated on white`,
+        `Minimalist logo mark for "${bizShort}" Indonesian food brand: elegant rice bowl silhouette with Minangkabau horn rooftop, color ${primary}, flat vector, white background, professional brand identity, no text, isolated`,
+        `Modern geometric logo for "${bizShort}" Indonesian restaurant: abstract fork and steaming bowl forming letter M, colors ${primary} and ${secondary}, clean vector illustration, white background, contemporary minimal style, no text`,
+        `Warm artisan logo for "${bizShort}" homestyle Indonesian cuisine: hand-drawn style cooking pot with decorative Minang patterns, warm ${accent} and ${primary} tones, friendly illustration, white background, artisanal brand mark, no text`,
       ]
     }
 
-    // Generate 3 logos dengan fal.ai Recraft V3
+    // Recraft V3 styles — terbaik untuk logo
+    const styles = ['vector_illustration', 'vector_illustration/line_art', 'vector_illustration/flat_2']
+    
     const logoUrls: string[] = []
     const errors: string[] = []
 
     for (let i = 0; i < 3; i++) {
       try {
-        const url = await generateLogoWithFal(prompts[i], falStyles[i])
+        const url = await falRecraft(prompts[i], styles[i])
         logoUrls.push(url)
-        console.log(`Logo ${i+1} generated: ${url.slice(0, 60)}...`)
+        console.log('logo', i+1, 'ok:', url.slice(0,50))
       } catch (err) {
-        console.error(`Logo ${i+1} failed:`, err)
-        errors.push(String(err))
-        logoUrls.push('') // placeholder
+        console.error('logo', i+1, 'failed:', err)
+        errors.push(`Logo ${i+1}: ${String(err)}`)
+        logoUrls.push('')
       }
     }
 
-    // Simpan URLs ke visual_data
-    const updatedVisual = {
-      ...visual,
-      logo_urls: logoUrls,
-      logo_prompts: prompts,
-      logo_generated_at: new Date().toISOString(),
-    }
-    await adminClient
-      .from('brand_kits')
-      .update({ visual_data: updatedVisual })
-      .eq('id', brand_kit_id)
+    // Update visual_data
+    await adminClient.from('brand_kits').update({
+      visual_data: { ...visual, logo_urls: logoUrls, logo_prompts: prompts, logos_generated_at: new Date().toISOString() }
+    }).eq('id', brand_kit_id)
 
-    return NextResponse.json({
-      ok: true,
-      logo_urls: logoUrls,
-      errors: errors.length > 0 ? errors : undefined,
-    })
+    const successCount = logoUrls.filter(u => u).length
+    return NextResponse.json({ ok: successCount > 0, logo_urls: logoUrls, prompts, errors: errors.length ? errors : undefined })
   } catch (err) {
-    console.error('generate-logos error:', err)
+    console.error('generate-logos:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
