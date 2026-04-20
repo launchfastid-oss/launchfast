@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const falKey = process.env.FAL_KEY!
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-    // 1. Generate food photo with Ideogram V2 — 4:5 portrait
+    // 1. Generate food photo with Ideogram V2 â 4:5 portrait
     const promptRes = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 120,
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           prompt: foodPrompt,
           style_type: 'REALISTIC',
-          aspect_ratio: '4:5',
+          aspect_ratio: '3:4',
           num_images: 1,
           expand_prompt: false,
         }),
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       console.error('Fal fetch error:', e)
     }
 
-    // 2. Quote card data — rendered client-side via Canvas
+    // 2. Quote card data â rendered client-side via Canvas
     const quoteCard = {
       caption_short: caption.slice(0, 130),
       business_name: bizName,
