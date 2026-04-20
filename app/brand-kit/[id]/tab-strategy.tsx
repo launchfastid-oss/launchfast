@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 
 interface StrategyData {
   golden_one_liner?: string
@@ -22,7 +23,8 @@ interface VisualData {
   colors?: Array<{ hex: string; name: string; usage: string }>
   typography?: { heading?: { font: string; reason: string }; body?: { font: string; reason: string } }
   logo_concepts?: Array<{ name: string; description: string; style: string }>
-  logo_svgs?: string[]
+  logo_urls?: string[]
+  logo_prompts?: string[]
   visual_mood?: string
 }
 
@@ -58,7 +60,7 @@ export function StrategyTab({ data }: { data: Record<string, unknown> }) {
           <h3 className="text-xl font-bold text-[#1A1A1A] mb-2">{d.sb7.hero.headline}</h3>
           <p className="text-[#555555]">{d.sb7.hero.subheadline}</p>
           {d.sb7.cta_direct && (
-            <div className="mt-4 flex gap-3">
+            <div className="mt-4 flex gap-3 flex-wrap">
               <span className="btn-primary text-sm py-2 px-4 cursor-default">{d.sb7.cta_direct}</span>
               {d.sb7.cta_transitional && <span className="btn-secondary text-sm py-2 px-4 cursor-default">{d.sb7.cta_transitional}</span>}
             </div>
@@ -104,20 +106,48 @@ export function StrategyTab({ data }: { data: Record<string, unknown> }) {
 
 export function VisualTab({ data, kitId }: { data: Record<string, unknown>; kitId?: string }) {
   const d = data as VisualData
-  const hasLogos = d.logo_svgs && d.logo_svgs.length > 0
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState('')
+
+  const hasLogoUrls = d.logo_urls && d.logo_urls.some(u => u && u.length > 10)
+
+  async function handleGenerateLogos() {
+    if (!kitId) return
+    setGenerating(true); setGenError('')
+    try {
+      const res = await fetch('/api/generate-logos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ brand_kit_id: kitId })
+      })
+      const result = await res.json()
+      if (result.ok) {
+        window.location.reload()
+      } else {
+        setGenError(result.error || 'Gagal generate logo')
+      }
+    } catch (e) {
+      setGenError(String(e))
+    }
+    setGenerating(false)
+  }
 
   return (
     <div className="space-y-5">
-      {/* Colors */}
+      {/* Color Palette */}
       {d.colors && d.colors.length > 0 && (
         <div className="card">
           <p className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide mb-4">Color Palette</p>
           <div className="grid grid-cols-5 gap-3">
             {d.colors.map((c, i) => (
               <div key={i} className="text-center">
-                <div className="w-full aspect-square rounded-xl border border-[#E0E0E0] mb-2 shadow-sm" style={{ backgroundColor: c.hex }} />
+                <div
+                  className="w-full aspect-square rounded-xl border border-[#E0E0E0] mb-2 shadow-sm"
+                  style={{ backgroundColor: c.hex }}
+                />
                 <p className="text-xs font-bold text-[#1A1A1A] font-mono">{c.hex}</p>
-                <p className="text-xs text-[#555555] mt-0.5">{c.name}</p>
+                <p className="text-xs text-[#555555] mt-0.5 font-medium">{c.name}</p>
                 <p className="text-xs text-[#888888] mt-0.5">{c.usage}</p>
               </div>
             ))}
@@ -131,102 +161,122 @@ export function VisualTab({ data, kitId }: { data: Record<string, unknown>; kitI
           <p className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide mb-4">Typography</p>
           <div className="grid grid-cols-2 gap-4">
             {d.typography.heading && (
-              <div className="bg-[#F5F5F5] rounded-lg p-4">
-                <p className="text-xs text-[#888888] mb-1">Heading Font</p>
-                <p className="text-xl font-bold text-[#1A1A1A]" style={{ fontFamily: d.typography.heading.font }}>{d.typography.heading.font}</p>
-                <p className="text-xs text-[#555555] mt-1">{d.typography.heading.reason}</p>
+              <div className="bg-[#F5F5F5] rounded-xl p-5">
+                <p className="text-xs text-[#888888] mb-2 uppercase tracking-wide">Heading Font</p>
+                <p className="text-2xl font-bold text-[#1A1A1A]" style={{ fontFamily: d.typography.heading.font + ', sans-serif' }}>
+                  {d.typography.heading.font}
+                </p>
+                <p className="text-sm text-[#555555] mt-2 leading-relaxed">{d.typography.heading.reason}</p>
               </div>
             )}
             {d.typography.body && (
-              <div className="bg-[#F5F5F5] rounded-lg p-4">
-                <p className="text-xs text-[#888888] mb-1">Body Font</p>
-                <p className="text-lg text-[#1A1A1A]" style={{ fontFamily: d.typography.body.font }}>{d.typography.body.font}</p>
-                <p className="text-xs text-[#555555] mt-1">{d.typography.body.reason}</p>
+              <div className="bg-[#F5F5F5] rounded-xl p-5">
+                <p className="text-xs text-[#888888] mb-2 uppercase tracking-wide">Body Font</p>
+                <p className="text-xl text-[#1A1A1A]" style={{ fontFamily: d.typography.body.font + ', sans-serif' }}>
+                  {d.typography.body.font}
+                </p>
+                <p className="text-sm text-[#555555] mt-2 leading-relaxed">{d.typography.body.reason}</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Logo Concepts dengan SVG */}
+      {/* Logo Section */}
       <div className="card">
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide">Konsep Logo (3 Opsi)</p>
-          {kitId && !hasLogos && (
-            <button
-              onClick={async () => {
-                const btn = document.getElementById('gen-logo-btn')
-                if (btn) btn.textContent = 'Generating...'
-                const res = await fetch('/api/generate-logos', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ brand_kit_id: kitId })
-                })
-                if (res.ok) window.location.reload()
-              }}
-              id="gen-logo-btn"
-              className="btn-primary text-xs py-1.5 px-3"
-            >
-              Generate Logo AI
-            </button>
-          )}
+        <div className="flex justify-between items-center mb-5">
+          <div>
+            <p className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide">Logo Concepts (AI Generated)</p>
+            <p className="text-xs text-[#888888] mt-1">
+              {hasLogoUrls ? 'Dibuat dengan Recraft V3 — SOTA image generation' : 'Klik Generate untuk buat logo dengan AI terbaik'}
+            </p>
+          </div>
+          <button
+            onClick={handleGenerateLogos}
+            disabled={generating || !kitId}
+            className="btn-primary text-sm py-2 px-4 flex items-center gap-2"
+          >
+            <span className={generating ? 'animate-spin inline-block' : ''}>&#9733;</span>
+            {generating ? 'Generating...' : hasLogoUrls ? 'Regenerate Logos' : 'Generate Logos AI'}
+          </button>
         </div>
 
-        {hasLogos ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {d.logo_svgs!.map((svg, i) => (
-              <div key={i} className="border border-[#E0E0E0] rounded-xl overflow-hidden">
-                <div className="bg-white p-6 flex items-center justify-center" style={{ minHeight: '200px' }}>
-                  <div
-                    style={{ width: '100%', maxWidth: '180px', aspectRatio: '1' }}
-                    dangerouslySetInnerHTML={{ __html: svg }}
-                  />
+        {genError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-red-600">{genError}</p>
+            <p className="text-xs text-red-400 mt-1">Pastikan FAL_KEY sudah di-set di Vercel environment variables</p>
+          </div>
+        )}
+
+        {generating && (
+          <div className="bg-[#F0FBF7] rounded-xl p-8 text-center">
+            <div className="w-12 h-12 border-4 border-[#1D9E75] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm font-semibold text-[#1D9E75]">Recraft V3 sedang membuat logo...</p>
+            <p className="text-xs text-[#555555] mt-1">Menggunakan model SOTA image generation terbaik</p>
+            <p className="text-xs text-[#888888] mt-1">Biasanya 20-40 detik per logo</p>
+          </div>
+        )}
+
+        {hasLogoUrls && !generating && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {d.logo_urls!.map((url, i) => (
+              url && url.length > 10 ? (
+                <div key={i} className="group border border-[#E0E0E0] rounded-xl overflow-hidden hover:border-[#1D9E75] transition-all hover:shadow-lg">
+                  <div className="bg-white p-4 flex items-center justify-center" style={{ minHeight: '220px', backgroundColor: '#FAFAFA' }}>
+                    <img
+                      src={url}
+                      alt={"Logo concept " + (i + 1)}
+                      className="w-full object-contain"
+                      style={{ maxHeight: '200px' }}
+                    />
+                  </div>
+                  <div className="bg-white border-t border-[#F0F0F0] p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs bg-[#E8F7F2] text-[#1D9E75] px-2 py-0.5 rounded-pill font-semibold">Opsi {i + 1}</span>
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#888888] hover:text-[#1D9E75]">
+                        Download
+                      </a>
+                    </div>
+                    {d.logo_concepts?.[i] && (
+                      <>
+                        <p className="text-sm font-bold text-[#1A1A1A] mt-1">{d.logo_concepts[i].name}</p>
+                        <p className="text-xs text-[#555555] mt-1 leading-relaxed">{d.logo_concepts[i].description}</p>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="bg-[#F5F5F5] p-3 border-t border-[#E0E0E0]">
-                  <p className="text-xs font-semibold text-[#1D9E75]">Opsi {i + 1}</p>
-                  {d.logo_concepts?.[i] && (
-                    <>
-                      <p className="text-sm font-bold text-[#1A1A1A] mt-0.5">{d.logo_concepts[i].name}</p>
-                      <p className="text-xs text-[#555555] mt-1">{d.logo_concepts[i].description}</p>
-                    </>
-                  )}
+              ) : (
+                <div key={i} className="border border-dashed border-[#E0E0E0] rounded-xl p-8 text-center">
+                  <p className="text-sm text-[#888888]">Logo {i+1} gagal generate</p>
                 </div>
-              </div>
+              )
             ))}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {(d.logo_concepts || []).map((concept, i) => (
-              <div key={i} className="border border-[#E0E0E0] rounded-lg p-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-lg bg-[#F5F5F5] flex items-center justify-center flex-shrink-0 border border-[#E0E0E0]">
-                    <span className="text-xs text-[#888888] font-bold text-center leading-tight">Logo{i+1}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs bg-[#E8F7F2] text-[#1D9E75] px-2 py-0.5 rounded-pill font-semibold">Opsi {i+1}</span>
-                      <span className="font-bold text-[#1A1A1A]">{concept.name}</span>
-                      <span className="text-xs text-[#888888]">• {concept.style}</span>
-                    </div>
-                    <p className="text-sm text-[#555555] leading-relaxed">{concept.description}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {kitId && (
-              <div className="bg-[#E8F7F2] rounded-lg p-4 text-center mt-2">
-                <p className="text-sm font-semibold text-[#1D9E75] mb-1">Logo AI belum di-generate</p>
-                <p className="text-xs text-[#555555] mb-3">Klik tombol "Generate Logo AI" di atas untuk membuat visual logo dari konsep ini</p>
-              </div>
-            )}
+        )}
+
+        {!hasLogoUrls && !generating && (
+          <div className="border-2 border-dashed border-[#E0E0E0] rounded-xl p-10 text-center">
+            <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">&#9733;</span>
+            </div>
+            <p className="font-semibold text-[#1A1A1A] mb-1">Logo AI belum di-generate</p>
+            <p className="text-sm text-[#555555] mb-4">
+              Menggunakan Recraft V3 — model terbaik untuk logo dan brand identity
+            </p>
+            <div className="space-y-1">
+              {(d.logo_concepts || []).map((c, i) => (
+                <p key={i} className="text-xs text-[#888888]">Opsi {i+1}: {c.name} — {c.style}</p>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
+      {/* Visual Mood */}
       {d.visual_mood && (
         <div className="card">
           <p className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide mb-2">Visual Mood</p>
-          <p className="text-[#1A1A1A] leading-relaxed">{d.visual_mood}</p>
+          <p className="text-[#1A1A1A] leading-relaxed italic">"{d.visual_mood}"</p>
         </div>
       )}
     </div>
