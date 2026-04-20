@@ -24,9 +24,7 @@ export async function POST(request: Request) {
     const adminClient = createAdminClient()
 
     const { data: kit } = await adminClient
-      .from('brand_kits')
-      .select('business_name, strategy_data, order_id')
-      .eq('id', brand_kit_id).single()
+      .from('brand_kits').select('business_name, strategy_data, order_id').eq('id', brand_kit_id).single()
     if (!kit) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const { data: order } = await adminClient
@@ -41,64 +39,58 @@ export async function POST(request: Request) {
 
     const strategy = (kit.strategy_data || {}) as Record<string, unknown>
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
     const biz = ob.business_name || kit.business_name
     const product = ob.product_service || ''
     const target = ob.target_customer || ''
     const tone = ob.tone_of_voice || 'Hangat & Personal'
     const goal = ob.thirty_day_goal || ''
     const oneLiner = (strategy.golden_one_liner as string) || ''
-
-    const ctx = `Bisnis: ${biz}. Produk: ${product}. Target: ${target}. Tone: ${tone}. Goal: ${goal}. Tagline: ${oneLiner}`
+    const ctx = 'Bisnis: ' + biz + '. Produk: ' + product + '. Target: ' + target + '. Tone: ' + tone + '. Goal 30 hari: ' + goal + '. Tagline: ' + oneLiner
 
     if (section === 'content') {
-      // Generate 10 posts yang benar-benar spesifik dan siap pakai
       const postPlans = [
-        { day: 1, platform: 'Instagram', type: 'Perkenalan', prompt: `Caption Instagram perkenalan untuk: ${ctx}. Kenalkan bisnis ini kepada followers baru. Tone hangat, personal, ceritakan keunikan. Sertakan emoji relevan. Akhiri dengan ajakan follow. 3-4 kalimat.` },
-        { day: 3, platform: 'TikTok', type: 'Behind the Scene', prompt: `Caption TikTok untuk konten behind-the-scene dapur/proses memasak: ${ctx}. Hook di kalimat pertama yang bikin penasaran. Tone santai dan autentik. 2-3 kalimat + hook.` },
-        { day: 5, platform: 'Instagram', type: 'Edukasi', prompt: `Caption Instagram edukatif tentang keunikan atau fakta menarik dari: ${ctx}. Buat orang belajar sesuatu baru. Format: hook pertanyaan → penjelasan singkat → kesimpulan. 4-5 kalimat.` },
-        { day: 7, platform: 'Instagram', type: 'Promo', prompt: `Caption Instagram untuk promosi/diskon spesial: ${ctx}. Urgency yang natural, bukan pushy. Sebutkan benefit utama. CTA yang jelas. 3-4 kalimat.` },
-        { day: 10, platform: 'Facebook', type: 'Cerita Inspiratif', prompt: `Caption Facebook cerita inspiratif pemilik bisnis atau pelanggan: ${ctx}. Emosional, relatable untuk ${target}. Buat pembaca merasa terhubung. 5-6 kalimat.` },
-        { day: 12, platform: 'Instagram', type: 'Tips', prompt: `Caption Instagram berisi tips berguna yang relevan dengan: ${ctx}. Format listicle pendek (3 tips). Hook menarik, tips konkret, CTA untuk save. 4-5 kalimat.` },
-        { day: 14, platform: 'TikTok', type: 'Testimoni', prompt: `Caption TikTok untuk video testimoni pelanggan: ${ctx}. Quote-style dari pelanggan puas, relatable untuk ${target}. Autentik dan tidak berlebihan. 2-3 kalimat.` },
-        { day: 17, platform: 'Instagram', type: 'Product Showcase', prompt: `Caption Instagram untuk showcase produk unggulan: ${ctx}. Deskripsi yang menggugah selera/keinginan. Detail yang bikin pembaca ingin beli sekarang. CTA jelas. 4-5 kalimat.` },
-        { day: 20, platform: 'Instagram', type: 'Interaktif', prompt: `Caption Instagram untuk konten interaktif (poll/pertanyaan/challenge): ${ctx}. Ajak followers berpartisipasi. Bikin mereka comment. Relevan dengan kehidupan ${target}. 3-4 kalimat + pertanyaan.` },
-        { day: 25, platform: 'Facebook', type: 'Nilai & Misi', prompt: `Caption Facebook tentang nilai dan misi bisnis: ${ctx}. Bukan jualan, tapi membangun kepercayaan dan loyalitas. Bicara tentang "kenapa" bisnis ini ada. 5-6 kalimat.` },
+        { day: 1,  platform: 'Instagram', type: 'Perkenalan',       angle: 'Kenalkan bisnis dengan hangat. Ceritakan kisah mengapa bisnis ini ada. Akhiri dengan ajakan follow.' },
+        { day: 3,  platform: 'TikTok',    type: 'Behind the Scene', angle: 'Hook: "Lihat apa yang terjadi sebelum makananmu tersaji..." Ceritakan proses menyiapkan produk dengan detail autentik.' },
+        { day: 5,  platform: 'Instagram', type: 'Edukasi',          angle: 'Bagikan fakta atau tips menarik yang relevan dengan produk. Format: hook pertanyaan -> fakta menarik -> takeaway.' },
+        { day: 7,  platform: 'Instagram', type: 'Promo',            angle: 'Promosi spesial dengan urgensi natural. Sebutkan benefit utama, bukan cuma diskon. CTA jelas.' },
+        { day: 10, platform: 'Facebook',  type: 'Cerita',           angle: 'Cerita nyata pelanggan atau momen berkesan. Emosional, relatable untuk target customer.' },
+        { day: 12, platform: 'Instagram', type: 'Tips',             angle: '3 tips berguna yang benar-benar membantu target customer dalam kehidupan sehari-hari. Format listicle.' },
+        { day: 14, platform: 'TikTok',    type: 'Testimoni',        angle: 'Quote gaya percakapan dari pelanggan yang puas. Autentik, spesifik, tidak berlebihan.' },
+        { day: 17, platform: 'Instagram', type: 'Product Showcase', angle: 'Highlight produk unggulan dengan deskripsi yang menggugah selera. Detail sensori: aroma, rasa, tekstur.' },
+        { day: 20, platform: 'Instagram', type: 'Interaktif',       angle: 'Ajukan pertanyaan atau poll yang membuat followers komentar. Relevan dengan kehidupan target customer.' },
+        { day: 25, platform: 'Facebook',  type: 'Nilai & Misi',     angle: 'Bicara tentang kenapa bisnis ini ada, bukan apa yang dijual. Bangun kepercayaan jangka panjang.' },
       ]
 
-      // Generate hashtags sekali untuk efisiensi
+      // Generate hashtag base sekali
       const hashtagBase = await ask(anthropic,
-        `Buat 15 hashtag Instagram yang relevan untuk: ${ctx}. Mix antara populer dan niche. Format: #tag1 #tag2 dst. Tanpa penjelasan.`, 150)
+        'Buat 12 hashtag Instagram untuk bisnis ini: ' + ctx + '. Campuran hashtag populer dan niche. Format: #tag1 #tag2 dst. Tanpa penjelasan.', 120)
+      const allTags = hashtagBase.split(/s+/).filter(h => h.startsWith('#'))
 
       const posts = []
       for (const plan of postPlans) {
-        const caption = await ask(anthropic, plan.prompt, 250)
-        // Pilih 5-7 hashtag yang paling relevan dari base
-        const hashtags = hashtagBase.split(' ').filter(h => h.startsWith('#')).slice(0, 6)
-        posts.push({
-          day: plan.day,
-          platform: plan.platform,
-          type: plan.type,
-          caption,
-          hashtags,
-        })
+        const caption = await ask(anthropic,
+          'Buat caption ' + plan.platform + ' untuk bisnis ini: ' + ctx + '
+Angle: ' + plan.angle + '
+Tone: ' + tone + '. Bahasa Indonesia yang natural dan engaging. Sertakan 1-2 emoji relevan. Langsung ke caption, tanpa penjelasan.', 280)
+        const tags = allTags.slice(0, 6).join(' ')
+        posts.push({ day: plan.day, platform: plan.platform, type: plan.type, caption, hashtags: tags })
       }
 
-      const data = { posts }
-      await adminClient.from('brand_kits').update({ content_data: data }).eq('id', brand_kit_id)
+      await adminClient.from('brand_kits').update({ content_data: { posts } }).eq('id', brand_kit_id)
       return NextResponse.json({ ok: true, section: 'content', count: posts.length })
     }
 
     if (section === 'legal') {
-      const struct = await ask(anthropic, `Rekomendasi bentuk usaha terbaik untuk: ${ctx}. 1 kalimat.`)
-      const reason = await ask(anthropic, `Kenapa ${struct} cocok untuk bisnis ini? 1 kalimat.`)
-      const tip1 = await ask(anthropic, `Tips keuangan paling penting untuk UMKM baru seperti ini: ${ctx}. 1 kalimat.`)
-      const tip2 = await ask(anthropic, `Tips legal paling penting untuk memulai bisnis ini. 1 kalimat.`)
-      const tip3 = await ask(anthropic, `Tips pajak paling penting untuk UMKM kuliner Indonesia. 1 kalimat.`)
-
+      const struct = await ask(anthropic, 'Rekomendasi bentuk usaha untuk: ' + ctx + '. 1 kalimat singkat.')
+      const reason = await ask(anthropic, 'Alasan singkat kenapa cocok untuk bisnis ini. 1 kalimat.')
+      const tip1 = await ask(anthropic, 'Tips keuangan terpenting untuk UMKM kuliner baru. 1 kalimat praktis.')
+      const tip2 = await ask(anthropic, 'Tips legal terpenting untuk memulai usaha kuliner di Indonesia. 1 kalimat.')
+      const tip3 = await ask(anthropic, 'Tips pajak paling penting untuk UMKM kuliner Indonesia. 1 kalimat.')
       const data = {
         business_structure: { recommendation: struct, reason },
-        nib: { required: true, steps: ['Buka oss.go.id', 'Daftar akun dengan NIK', 'Isi data usaha', 'Pilih KBLI sesuai bisnis', 'Download NIB digital'], estimate_days: 1, cost: 'Gratis' },
-        tax: { npwp_required: true, vat_required: false, pph_rate: '0.5% dari omzet bruto per bulan', notes: 'UMKM omzet di bawah Rp 500 juta per tahun tarif final 0.5%' },
+        nib: { required: true, steps: ['Buka oss.go.id', 'Daftar akun dengan NIK', 'Isi data usaha lengkap', 'Pilih KBLI yang sesuai', 'Download NIB digital'], estimate_days: 1, cost: 'Gratis' },
+        tax: { npwp_required: true, vat_required: false, pph_rate: '0.5% dari omzet bruto per bulan', notes: 'UMKM omzet di bawah Rp 500 juta/tahun kena tarif final 0.5%' },
         permits: ['NIB dari OSS (wajib)', 'Sertifikat Laik Higiene Sanitasi Pangan dari Dinas Kesehatan', 'PIRT jika jual produk kemasan'],
         tips: [tip1, tip2, tip3],
       }
