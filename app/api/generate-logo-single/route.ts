@@ -38,8 +38,8 @@ export async function POST(request: Request) {
     // 3 pendekatan logo yang berbeda, semua valid style Recraft V3
     const configs = [
       {
-        style: 'vector_illustration/flat_2',
-        prompt: `Modern flat logo design for brand "${shortName}", ${industry}. 
+        style: 'vector_illustration',
+        prompt: `Clean professional wordmark logo for brand "${shortName}", ${industry}. 
 Logo composition: clean typography with the text "${shortName}" in bold modern font, paired with a small flat icon of ${concept.description} placed above or to the left of the text. 
 Color scheme: ${primary} for the icon, dark ${primary} for the text, ${secondary} as background accent.
 Style: contemporary flat design, no shadows, no gradients, minimal details.
