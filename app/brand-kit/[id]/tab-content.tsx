@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 
 interface QuoteCard {
-  caption_short: string
+  quote_text: string
   business_name: string
   one_liner: string
   primary_color: string
@@ -36,7 +36,7 @@ function QuoteCardCanvas({ qc }: { qc: QuoteCard }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // 1080x1350 portrait — render at 540x675 (50%) for display
+    // 1080x1350 portrait â render at 540x675 (50%) for display
     const W = 540, H = 675
     canvas.width = W
     canvas.height = H
@@ -68,10 +68,16 @@ function QuoteCardCanvas({ qc }: { qc: QuoteCard }) {
     ctx.font = 'bold 22px system-ui, sans-serif'
     ctx.fillText(qc.business_name.toUpperCase(), 48, 160)
 
-    // Main caption text - word wrap
+    // Big quote mark
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'
+    ctx.font = 'bold 120px serif'
+    ctx.fillText('\u201C', 36, 280)
+    ctx.font = 'bold 34px system-ui, sans-serif'
+
+    // Main quote text - word wrap
     ctx.fillStyle = '#FFFFFF'
     ctx.font = 'bold 34px system-ui, sans-serif'
-    const lines = wrapText(ctx, qc.caption_short, W - 96, 34)
+    const lines = wrapText(ctx, qc.quote_text || qc.business_name, W - 96, 34)
     lines.forEach((line, i) => {
       ctx.fillText(line, 48, 230 + i * 48)
     })
