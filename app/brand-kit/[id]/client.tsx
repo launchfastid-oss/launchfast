@@ -118,7 +118,7 @@ export default function BrandKitClient({ kitId, userId }: { kitId: string; userI
             </div>
             {activeTab === 'strategy' && <StrategyTab data={tabData} />}
             {activeTab === 'visual' && <VisualTab data={tabData} kitId={kitId} />}
-            {activeTab === 'content' && <ContentTab data={tabData} />}
+            {activeTab === 'content' && <ContentTab data={tabData} kitId={kitId} />}
             {activeTab === 'whatsapp' && <WhatsappTab data={tabData} />}
             {activeTab === 'checklist' && <ChecklistTab data={tabData} />}
             {activeTab === 'legal' && <LegalTab data={tabData} />}
