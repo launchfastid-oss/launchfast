@@ -8,25 +8,22 @@ function buildMotionPrompt(postType: string, product: string): string {
   const p = product.toLowerCase()
   const isPadang = p.includes('padang') || p.includes('rendang') || p.includes('gulai')
   const isCake = p.includes('kue') || p.includes('cake') || p.includes('bakery')
-
   const foodMotion = isPadang
     ? 'gentle steam rising from hot rice and rendang, slow cinematic zoom, warm golden light'
     : isCake
     ? 'slow pan across colorful cakes, gentle bokeh, appetizing close-up'
-    : 'gentle steam rising from hot food, slow zoom, warm natural light'
-
+    : 'gentle steam rising from food, slow zoom, warm natural light'
   const motionMap: Record<string, string> = {
-    'Perkenalan': 'slow cinematic zoom in, warm welcoming atmosphere',
+    Perkenalan: 'slow cinematic zoom in, warm welcoming atmosphere',
     'Behind the Scene': 'subtle handheld authentic feel',
-    'Edukasi': 'smooth slow zoom, steady camera',
-    'Promo': 'dynamic push in, energetic elegant motion',
-    'Tips': 'clean steady professional shot',
-    'Testimoni': 'warm handheld authentic motion',
+    Edukasi: 'smooth slow zoom, steady camera',
+    Promo: 'dynamic push in, energetic elegant motion',
+    Tips: 'clean steady professional shot',
+    Testimoni: 'warm handheld authentic motion',
     'Product Showcase': 'glamour slow rotation, bokeh hero shot',
-    'Interaktif': 'lively gentle motion, inviting energy',
+    Interaktif: 'lively gentle motion, inviting energy',
   }
-  const motion = motionMap[postType] || 'slow gentle zoom, cinematic'
-  return foodMotion + '. ' + motion + '. No text, no logos, photorealistic.'
+  return foodMotion + '. ' + (motionMap[postType] || 'slow gentle zoom, cinematic') + '. No text, no logos, photorealistic.'
 }
 
 export async function POST(request: Request) {
@@ -55,59 +52,46 @@ export async function POST(request: Request) {
     const post = posts[post_index]
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
-    // Pilih source image — user photo prioritas
     const userPhoto = ob.product_image_url || ''
     const foodPhoto = String(post.food_image_url || '')
     const sourceImage = (userPhoto.startsWith('http') ? userPhoto : null)
       || (foodPhoto.startsWith('http') ? foodPhoto : null)
-
-    if (!sourceImage) {
-      return NextResponse.json({ error: 'Generate foto produk dulu sebelum membuat video.' }, { status: 400 })
-    }
+    if (!sourceImage) return NextResponse.json({ error: 'Generate foto produk dulu.' }, { status: 400 })
 
     const product = ob.product_service || ''
-    const postType = String(post.type || '')
-    const motionPrompt = buildMotionPrompt(postType, product)
+    const motionPrompt = buildMotionPrompt(String(post.type || ''), product)
     const falKey = process.env.FAL_KEY!
 
-    // Submit ke fal QUEUE — tidak tunggu hasil, langsung return request_id
+    // Submit ke fal queue — returns request_id, status_url, response_url
     const queueRes = await fetch('https://queue.fal.run/fal-ai/ltx-video/image-to-video', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Key ' + falKey,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Authorization': 'Key ' + falKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         image_url: sourceImage,
         prompt: motionPrompt,
         negative_prompt: 'blur, distort, low quality, text overlay, watermark, fast motion',
-        num_frames: 121,
-        fps: 24,
-        height: 768,
-        width: 576,
+        num_frames: 121, fps: 24, height: 768, width: 576,
       }),
     })
 
     if (!queueRes.ok) {
-      const errText = await queueRes.text()
-      console.error('fal queue submit error:', queueRes.status, errText.slice(0, 200))
-      return NextResponse.json({ error: 'Gagal submit ke fal queue: ' + queueRes.status }, { status: 500 })
+      const err = await queueRes.text()
+      return NextResponse.json({ error: 'Submit gagal: ' + queueRes.status + ' ' + err.slice(0, 150) }, { status: 500 })
     }
 
-    const queueData = await queueRes.json()
-    const requestId = queueData.request_id
+    const q = await queueRes.json()
+    if (!q.request_id) return NextResponse.json({ error: 'No request_id dari fal: ' + JSON.stringify(q).slice(0, 200) }, { status: 500 })
 
-    if (!requestId) {
-      return NextResponse.json({ error: 'Tidak dapat request_id dari fal' }, { status: 500 })
-    }
+    console.log('fal queue submitted:', q.request_id)
+    console.log('status_url:', q.status_url)
 
-    console.log('Submitted to fal queue, request_id:', requestId)
-
-    // Simpan request_id ke post agar bisa di-poll
+    // Simpan URLs yang dikembalikan fal — pakai ini saat polling
     const updatedPosts = [...posts]
     updatedPosts[post_index] = {
       ...post,
-      video_request_id: requestId,
+      video_request_id: q.request_id,
+      video_status_url: q.status_url,     // URL untuk cek status
+      video_response_url: q.response_url, // URL untuk ambil hasil
       video_status: 'pending',
       video_submitted_at: new Date().toISOString(),
     }
@@ -117,12 +101,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      request_id: requestId,
+      request_id: q.request_id,
+      status_url: q.status_url,
+      response_url: q.response_url,
       status: 'pending',
       post_index,
     })
   } catch (err) {
-    console.error('generate-post-video:', err)
+    console.error('generate-post-video error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
