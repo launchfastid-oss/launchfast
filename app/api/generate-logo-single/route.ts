@@ -20,72 +20,90 @@ export async function POST(request: Request) {
 
     const visual = (kit.visual_data || {}) as Record<string, unknown>
     const strategy = (kit.strategy_data || {}) as Record<string, unknown>
-    const colors = (visual.colors as Array<{hex:string,name:string}>) || []
-    const concepts = (visual.logo_concepts as Array<{name:string,description:string,style:string}>) || []
+    const colors = (visual.colors as Array<{hex:string, name:string}>) || []
+    const concepts = (visual.logo_concepts as Array<{name:string, description:string, style:string}>) || []
     const oneLiner = (strategy.golden_one_liner as string) || ''
-    
+    const personality = ((strategy.brand_personality as string[]) || []).slice(0, 2).join(' and ')
+
     const primary = colors[0]?.hex || '#8B4513'
     const secondary = colors[1]?.hex || '#D4A574'
     const accent = colors[2]?.hex || '#2D5016'
-    
-    // Nama bisnis yang clean
-    const bizName = kit.business_name.split(',')[0].trim()
-    const shortName = bizName.split(' ').slice(0, 3).join(' ')
-    const initial = bizName.split(' ').filter((w:string) => w.length > 2).map((w:string) => w[0]).slice(0,2).join('').toUpperCase()
-    const concept = concepts[index] || { name: 'Minimalis', description: 'food brand', style: 'Minimalist' }
-    const industry = 'Indonesian food & culinary'
 
-    // 3 pendekatan logo yang berbeda, semua valid style Recraft V3
+    const bizName = kit.business_name.split(',')[0].trim()
+    const concept = concepts[index] || { name: 'Logo', description: 'food brand symbol', style: 'Modern' }
+
+    // Ideogram V2 prompt structure — sangat spesifik untuk typography + brand
+    // style_type DESIGN = best for logos, posters, graphic design dengan teks
     const configs = [
       {
-        style: 'vector_illustration',
-        prompt: `Clean professional wordmark logo for brand "${shortName}", ${industry}. 
-Logo composition: clean typography with the text "${shortName}" in bold modern font, paired with a small flat icon of ${concept.description} placed above or to the left of the text. 
-Color scheme: ${primary} for the icon, dark ${primary} for the text, ${secondary} as background accent.
-Style: contemporary flat design, no shadows, no gradients, minimal details.
-White background, professional brand logo, commercial quality, centered composition.`
+        // Logo 1: Full wordmark dengan nama brand — pakai DESIGN style
+        style_type: 'DESIGN',
+        prompt: `A professional brand logo for "${bizName}". 
+The logo features the brand name "${bizName}" in bold, clean, modern sans-serif typography. 
+Above the text is a small icon: ${concept.description}. 
+Color palette: ${primary} (primary), ${secondary} (secondary), white background.
+Style: contemporary flat design, minimal, commercial quality brand identity.
+The text "${bizName}" must be clearly legible and centered.
+Clean white background, no shadows, professional logo design.`,
       },
       {
-        style: 'vector_illustration',
-        prompt: `Professional logo icon for "${shortName}" brand. 
-Single symbol: geometric abstraction of ${concept.description} integrated with letter "${initial}". 
-Bold clean shapes using only ${primary} and white. Negative space used creatively.
-Style: modern minimal logo mark, scalable vector, suitable as app icon or stamp.
-Perfect white background, isolated logo mark, no text, brand symbol only.`
+        // Logo 2: Icon mark + nama di bawah — clean dan modern
+        style_type: 'DESIGN',
+        prompt: `Minimalist logo design for "${bizName}" brand.
+Central icon: geometric abstract symbol of ${concept.description}, using color ${primary}.
+Below the icon: brand name "${bizName}" in clean modern typography, color ${primary}.
+Style: modern minimalist, flat design, scalable logo mark.
+White background, no gradients, no shadows, professional brand identity design.`,
       },
       {
-        style: 'digital_illustration',
-        prompt: `Premium badge logo for "${shortName}" ${industry} brand.
-Circular emblem/seal design: brand name "${shortName}" in curved arc text at top, central illustration of ${concept.description}, decorative frame with cultural patterns.
-Colors: ${primary}, ${secondary}, ${accent}, and white. Rich detailed illustration style.
-Style: artisan food brand aesthetic, premium packaging quality, Indonesian cultural touch.
-White background, complete badge logo design, professional commercial quality.`
-      }
+        // Logo 3: Badge/emblem artisan — circle dengan nama brand
+        style_type: 'DESIGN',
+        prompt: `Artisan badge logo for "${bizName}" Indonesian food brand.
+Circular emblem design: brand name "${bizName}" curved along the top arc of the circle.
+Center: elegant illustration of ${concept.description}.
+Bottom arc: tagline or decorative line.
+Colors: ${primary}, ${secondary}, ${accent} on white background.
+Style: premium artisan food brand, Indonesian cultural aesthetic, badge/seal logo design.`,
+      },
     ]
 
     const config = configs[index] || configs[0]
 
-    // Generate with fal.ai Recraft V3
+    // Anthropic untuk enhance prompt lebih lanjut
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const enhanceRes = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{ role: 'user', content: `Enhance this logo prompt for Ideogram V2 AI. Keep the brand name "${bizName}" exact. Add specific design details. Max 120 words. Return ONLY the enhanced prompt text:
+
+${config.prompt}` }]
+    })
+    const finalPrompt = enhanceRes.content[0].type === 'text'
+      ? enhanceRes.content[0].text.trim()
+      : config.prompt
+
+    // Call Ideogram V2 via fal.ai
     const falKey = process.env.FAL_KEY!
-    const falRes = await fetch('https://fal.run/fal-ai/recraft/v3/text-to-image', {
+    const falRes = await fetch('https://fal.run/fal-ai/ideogram/v2', {
       method: 'POST',
       headers: { 'Authorization': 'Key ' + falKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: config.prompt,
-        image_size: { width: 1024, height: 1024 },
-        style: config.style,
+        prompt: finalPrompt,
+        style_type: config.style_type,
+        aspect_ratio: '1:1',
         num_images: 1,
+        expand_prompt: false,
       }),
     })
 
     if (!falRes.ok) {
       const errText = await falRes.text()
-      return NextResponse.json({ error: 'fal error ' + falRes.status + ': ' + errText.slice(0, 300) }, { status: 500 })
+      return NextResponse.json({ error: 'ideogram error ' + falRes.status + ': ' + errText.slice(0, 300) }, { status: 500 })
     }
 
     const falData = await falRes.json()
     const imageUrl = falData.images?.[0]?.url
-    if (!imageUrl) return NextResponse.json({ error: 'No URL from fal.ai' }, { status: 500 })
+    if (!imageUrl) return NextResponse.json({ error: 'No URL from ideogram' }, { status: 500 })
 
     // Simpan URL
     const urls = ((visual.logo_urls || ['','','']) as string[]).slice()
@@ -94,13 +112,13 @@ White background, complete badge logo design, professional commercial quality.`
 
     const prompts = ((visual.logo_prompts || ['','','']) as string[]).slice()
     while (prompts.length < 3) prompts.push('')
-    prompts[index] = config.prompt
+    prompts[index] = finalPrompt
 
     await adminClient.from('brand_kits').update({
       visual_data: { ...visual, logo_urls: urls, logo_prompts: prompts, logos_generated_at: new Date().toISOString() }
     }).eq('id', brand_kit_id)
 
-    return NextResponse.json({ ok: true, index, url: imageUrl, style: config.style })
+    return NextResponse.json({ ok: true, index, url: imageUrl, model: 'ideogram-v2', style: config.style_type })
   } catch (err) {
     console.error('generate-logo-single:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
