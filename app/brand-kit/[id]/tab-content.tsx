@@ -157,7 +157,7 @@ async function triggerVideoDownload(videoUrl: string, filename: string) {
   }
 }
 
-// VideoSection: tombol generate, player, download MP4 + GIF
+// VideoSection: submit ke fal queue, lalu poll setiap 3 detik
 function VideoSection({ post, kitId, postIndex, onUpdate }: {
   post: Post
   kitId?: string
@@ -167,15 +167,17 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
   const [genVideo, setGenVideo] = useState(false)
   const [videoError, setVideoError] = useState('')
   const [gifLoading, setGifLoading] = useState(false)
+  const [pollMsg, setPollMsg] = useState('')
   const hasVideo = !!post.video_url
   const hasSource = !!(post.food_image_url || post.quote_card)
   const day = post.day
-  const type = (post.type || 'post').toLowerCase().replace(/\s+/g, '-')
+  const type = (post.type || 'post').toLowerCase().replace(/\\s+/g, '-')
 
   async function generateVideo() {
     if (!kitId) return
-    setGenVideo(true); setVideoError('')
+    setGenVideo(true); setVideoError(''); setPollMsg('Mengirim ke fal.ai queue...')
     try {
+      // Step 1: Submit job
       const res = await fetch('/api/generate-post-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -183,13 +185,49 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
         body: JSON.stringify({ brand_kit_id: kitId, post_index: postIndex }),
       })
       const data = await res.json()
-      if (data.ok) {
-        onUpdate(postIndex, { video_url: data.video_url, video_generated_at: new Date().toISOString() })
-      } else {
-        setVideoError(data.error || 'Gagal generate video')
+      if (!data.ok || !data.request_id) {
+        setVideoError(data.error || 'Gagal submit ke queue')
+        setGenVideo(false); return
       }
+
+      const requestId = data.request_id
+      setPollMsg('Job dikirim! Menunggu LTX Video memproses...')
+
+      // Step 2: Poll setiap 3 detik sampai selesai (max 3 menit)
+      let attempts = 0
+      const maxAttempts = 60 // 60 x 3s = 3 menit
+
+      while (attempts < maxAttempts) {
+        await new Promise(r => setTimeout(r, 3000))
+        attempts++
+        setPollMsg('Memproses video... (' + (attempts * 3) + 's)')
+
+        const pollRes = await fetch('/api/poll-video-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ brand_kit_id: kitId, post_index: postIndex, request_id: requestId }),
+        })
+        const pollData = await pollRes.json()
+
+        if (pollData.status === 'completed' && pollData.video_url) {
+          onUpdate(postIndex, { video_url: pollData.video_url, video_generated_at: new Date().toISOString() })
+          setPollMsg('')
+          setGenVideo(false)
+          return
+        }
+
+        if (pollData.status === 'error') {
+          setVideoError(pollData.error || 'Video generation failed')
+          setGenVideo(false)
+          return
+        }
+        // status === 'pending' → lanjut poll
+      }
+
+      setVideoError('Timeout setelah 3 menit. Coba lagi.')
     } catch (e) { setVideoError(String(e)) }
-    setGenVideo(false)
+    setGenVideo(false); setPollMsg('')
   }
 
   return (
@@ -216,11 +254,11 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
               borderRadius: '8px', padding: '6px 14px',
               fontSize: '12px', fontWeight: 600,
               cursor: genVideo ? 'not-allowed' : 'pointer',
-              display: 'flex', alignItems: 'center', gap: '6px',
+              display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
             }}
           >
             <span>&#9654;</span>
-            {genVideo ? 'Generating ~30s...' : hasVideo ? 'Regenerate Video' : 'Generate Video'}
+            {genVideo ? 'Processing...' : hasVideo ? 'Regenerate Video' : 'Generate Video'}
           </button>
         )}
       </div>
@@ -228,9 +266,12 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
       {videoError && <p style={{ fontSize: '12px', color: '#E53935', marginBottom: '8px' }}>{videoError}</p>}
 
       {genVideo && (
-        <div style={{ background: '#F5F5F5', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', color: '#1A1A1A', fontWeight: 600, margin: '0 0 4px' }}>LTX Video sedang animate foto...</p>
-          <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>~25-40 detik</p>
+        <div style={{ background: '#F5F5F5', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
+          <div style={{ display: 'inline-block', width: '20px', height: '20px', border: '2px solid #1A1A1A', borderTopColor: 'transparent', borderRadius: '50%', marginBottom: '8px', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ fontSize: '13px', color: '#1A1A1A', fontWeight: 600, margin: '0 0 2px' }}>
+            {pollMsg || 'LTX Video sedang animate foto...'}
+          </p>
+          <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>Async queue — halaman tidak perlu stay terbuka</p>
         </div>
       )}
 
@@ -238,11 +279,7 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
         <div>
           <video
             src={post.video_url}
-            controls
-            loop
-            muted
-            autoPlay
-            playsInline
+            controls loop muted autoPlay playsInline
             style={{ width: '100%', maxWidth: '280px', borderRadius: '10px', display: 'block', aspectRatio: '3/4', objectFit: 'cover' }}
           />
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -251,22 +288,15 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
               onClick={async (e) => {
                 e.stopPropagation()
                 setGifLoading(true)
-                const videoUrl = post.video_url as string
-                await triggerVideoDownload(videoUrl, 'gif-hari-' + day + '-' + type + '.mp4')
+                await triggerVideoDownload(post.video_url as string, 'gif-hari-' + day + '-' + type + '.mp4')
                 setGifLoading(false)
               }}
               disabled={gifLoading}
-              style={{
-                background: '#FF6B35', color: 'white', border: 'none',
-                borderRadius: '6px', padding: '6px 12px',
-                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-              }}
+              style={{ background: '#FF6B35', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
             >
               {gifLoading ? '...' : '\u2193 Download GIF'}
             </button>
-            <p style={{ fontSize: '11px', color: '#AAA', margin: 0 }}>
-              Lalu convert di ezgif.com/video-to-gif
-            </p>
+            <p style={{ fontSize: '11px', color: '#AAA', margin: 0 }}>Konversi ke GIF di ezgif.com/video-to-gif</p>
           </div>
         </div>
       )}
@@ -279,6 +309,7 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
     </div>
   )
 }
+
 
 function PostImages({ post, kitId, postIndex, onUpdate }: {
   post: Post
