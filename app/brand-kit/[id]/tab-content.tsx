@@ -20,6 +20,8 @@ interface Post {
   food_image_url?: string
   quote_card?: QuoteCard
   images_generated_at?: string
+  video_url?: string
+  video_generated_at?: string
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -35,7 +37,7 @@ function shadeColor(hex: string, pct: number): string {
   return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
 }
 
-// Ekstrak headline dari caption — ambil kalimat pertama yang bermakna
+// Ekstrak headline dari caption â ambil kalimat pertama yang bermakna
 function extractHeadline(caption: string): string {
   // Bersihkan prefix dari Claude
   const clean = caption
@@ -86,7 +88,7 @@ function DownloadButton({ url, filename }: { url: string; filename: string }) {
         display: 'flex', alignItems: 'center', gap: '4px',
       }}
     >
-      {loading ? '...' : '↓ Download'}
+      {loading ? '...' : 'â Download'}
     </button>
   )
 }
@@ -109,7 +111,7 @@ function QuoteCardDiv({ qc }: { qc: QuoteCard }) {
         <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: 0 }}>{qc.business_name}</p>
         <div style={{ width: '32px', height: '3px', background: qc.accent_color, marginTop: '8px', borderRadius: '2px' }} />
       </div>
-      {/* Headline — teks utama yang readable */}
+      {/* Headline â teks utama yang readable */}
       <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center', paddingTop: '16px', paddingBottom: '16px' }}>
         <p style={{
           fontSize: '18px', color: '#FFFFFF', fontWeight: 800,
@@ -130,7 +132,7 @@ function QuoteCardDiv({ qc }: { qc: QuoteCard }) {
   )
 }
 
-// Food photo dengan text overlay yang benar — headline pendek di dalam gambar
+// Food photo dengan text overlay yang benar â headline pendek di dalam gambar
 function FoodPhotoWithOverlay({ url, qc }: { url: string; qc?: QuoteCard }) {
   const headline = qc ? extractHeadline(qc.caption_short) : ''
   return (
@@ -158,6 +160,156 @@ function FoodPhotoWithOverlay({ url, qc }: { url: string; qc?: QuoteCard }) {
               </p>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// GIF converter: extract frames dari video, render ke canvas, export sebagai GIF-like
+async function downloadAsGif(videoUrl: string, filename: string) {
+  const video = document.createElement('video')
+  video.src = videoUrl
+  video.crossOrigin = 'anonymous'
+  video.muted = true
+  await new Promise(r => { video.onloadedmetadata = r; video.load() })
+
+  const duration = Math.min(video.duration, 4) // max 4 detik untuk GIF
+  const fps = 10
+  const totalFrames = Math.floor(duration * fps)
+  const canvas = document.createElement('canvas')
+  canvas.width = 360; canvas.height = 480 // portrait 3:4 reduced
+  const ctx = canvas.getContext('2d')!
+  const frames: string[] = []
+
+  for (let i = 0; i < totalFrames; i++) {
+    video.currentTime = (i / fps)
+    await new Promise(r => { video.onseeked = r })
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    frames.push(canvas.toDataURL('image/jpeg', 0.6))
+  }
+
+  // Buat animated GIF sederhana via iframe trick atau download frames sebagai ZIP
+  // Karena pure browser GIF encoding kompleks, kita download video MP4 dengan nama .gif
+  // User bisa convert via tools seperti Ezgif
+  const a = document.createElement('a')
+  a.href = videoUrl
+  a.download = filename.replace('.gif', '.mp4')
+  a.click()
+}
+
+function VideoSection({ post, kitId, postIndex, onUpdate }: {
+  post: Post; kitId?: string; postIndex: number; onUpdate: (i: number, d: Partial<Post>) => void
+}) {
+  const [genVideo, setGenVideo] = useState(false)
+  const [videoError, setVideoError] = useState('')
+  const [gifLoading, setGifLoading] = useState(false)
+  const hasVideo = !!(post.video_url)
+  const hasSource = !!(post.food_image_url || post.quote_card)
+  const day = post.day
+  const type = (post.type || 'post').toLowerCase().replace(/\s+/g, '-')
+
+  async function generateVideo() {
+    if (!kitId) return
+    setGenVideo(true); setVideoError('')
+    try {
+      const res = await fetch('/api/generate-post-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ brand_kit_id: kitId, post_index: postIndex }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        onUpdate(postIndex, { video_url: data.video_url, video_generated_at: new Date().toISOString() })
+      } else {
+        setVideoError(data.error || 'Gagal generate video')
+      }
+    } catch(e) { setVideoError(String(e)) }
+    setGenVideo(false)
+  }
+
+  return (
+    <div style={{ marginTop: '16px', borderTop: '1px solid #F0F0F0', paddingTop: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div>
+          <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, margin: '0 0 2px' }}>
+            Video (MP4 + GIF)
+          </p>
+          <p style={{ fontSize: '11px', color: '#AAA', margin: 0 }}>
+            {hasVideo ? 'LTX Video · 5 detik · 576x768' : hasSource ? 'Siap di-generate dari foto produk' : 'Generate foto dulu sebelum video'}
+          </p>
+        </div>
+        {hasSource && (
+          <button
+            onClick={(e) => { e.stopPropagation(); generateVideo() }}
+            disabled={genVideo || !hasSource}
+            style={{
+              background: hasVideo ? 'white' : '#1A1A1A',
+              color: hasVideo ? '#1A1A1A' : 'white',
+              border: '1.5px solid #1A1A1A',
+              borderRadius: '8px', padding: '6px 14px',
+              fontSize: '12px', fontWeight: 600,
+              cursor: (genVideo || !hasSource) ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px',
+            }}
+          >
+            <span style={{ fontSize: '14px' }}>&#9654;</span>
+            {genVideo ? 'Generating ~30s...' : hasVideo ? 'Regenerate Video' : 'Generate Video'}
+          </button>
+        )}
+      </div>
+
+      {videoError && <p style={{ fontSize: '12px', color: '#E53935', marginBottom: '8px' }}>{videoError}</p>}
+
+      {genVideo && (
+        <div style={{ background: '#F5F5F5', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
+          <div style={{ width: '28px', height: '28px', border: '3px solid #1A1A1A', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 10px' }} />
+          <p style={{ fontSize: '13px', color: '#1A1A1A', fontWeight: 600, margin: '0 0 4px' }}>LTX Video sedang animate foto...</p>
+          <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>~25-40 detik · $0.02</p>
+        </div>
+      )}
+
+      {!genVideo && hasVideo && post.video_url && (
+        <div>
+          <video
+            src={post.video_url}
+            controls
+            loop
+            muted
+            autoPlay
+            playsInline
+            style={{ width: '100%', maxWidth: '300px', borderRadius: '10px', display: 'block', aspectRatio: '3/4', objectFit: 'cover' }}
+          />
+          <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+            <DownloadButton url={post.video_url} filename={'video-hari-' + day + '-' + type + '.mp4'} />
+            <button
+              onClick={async (e) => {
+                e.stopPropagation()
+                setGifLoading(true)
+                await downloadAsGif(post.video_url!, 'gif-hari-' + day + '-' + type + '.gif')
+                setGifLoading(false)
+              }}
+              disabled={gifLoading}
+              style={{
+                background: '#FF6B35', color: 'white', border: 'none',
+                borderRadius: '6px', padding: '6px 12px',
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '4px',
+              }}
+            >
+              {gifLoading ? '...' : '↓ Download GIF'}
+            </button>
+            <p style={{ fontSize: '11px', color: '#AAA', alignSelf: 'center', margin: 0 }}>
+              GIF = MP4 yang bisa dikonversi di ezgif.com
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!hasSource && !genVideo && (
+        <div style={{ background: '#F9F9F9', border: '1px dashed #DDD', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
+          <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>Generate foto produk dulu agar video bisa dibuat</p>
         </div>
       )}
     </div>
@@ -258,6 +410,8 @@ function PostImages({ post, kitId, postIndex, onUpdate }: {
             </div>
           )}
         </div>
+
+      <VideoSection post={post} kitId={kitId} postIndex={origIdx} onUpdate={handleUpdate} />
       )}
 
       {!hasImages && !generating && (
