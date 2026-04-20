@@ -27,50 +27,6 @@ const PLATFORM_COLORS: Record<string, string> = {
   TikTok: '#010101',
 }
 
-// CSS-based quote card — no Canvas, no freeze
-function QuoteCardDiv({ qc }: { qc: QuoteCard }) {
-  const lines = qc.caption_short.split(' ')
-  const preview = lines.slice(0, 10).join(' ') + (lines.length > 10 ? '...' : '')
-  return (
-    <div style={{
-      width: '100%',
-      aspectRatio: '3/4',
-      background: 'linear-gradient(160deg, ' + qc.primary_color + ' 0%, ' + shadeColor(qc.primary_color, -40) + ' 100%)',
-      borderRadius: '10px',
-      padding: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      {/* Decorative circles */}
-      <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
-      <div style={{ position: 'absolute', bottom: '-30px', left: '-30px', width: '140px', height: '140px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
-      {/* Top: Brand name */}
-      <div>
-        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.65)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: 0 }}>
-          {qc.business_name}
-        </p>
-        <div style={{ width: '36px', height: '3px', background: qc.accent_color, marginTop: '8px', borderRadius: '2px' }} />
-      </div>
-      {/* Middle: Caption */}
-      <div>
-        <p style={{ fontSize: '15px', color: '#FFFFFF', fontWeight: 700, lineHeight: 1.55, margin: 0 }}>
-          {preview}
-        </p>
-      </div>
-      {/* Bottom: One-liner */}
-      <div>
-        <div style={{ height: '1px', background: 'rgba(255,255,255,0.2)', marginBottom: '10px' }} />
-        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', margin: 0, fontStyle: 'italic' }}>
-          {qc.one_liner}
-        </p>
-      </div>
-    </div>
-  )
-}
-
 function shadeColor(hex: string, pct: number): string {
   const n = parseInt(hex.replace('#',''), 16)
   const r = Math.min(255, Math.max(0, (n >> 16) + pct))
@@ -79,7 +35,64 @@ function shadeColor(hex: string, pct: number): string {
   return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
 }
 
-function PostImages({ post, kitId, postIndex }: { post: Post; kitId?: string; postIndex: number }) {
+// Quote card = gambar branded dengan teks di atasnya (untuk tips, promo, testimoni)
+function QuoteCardDiv({ qc }: { qc: QuoteCard }) {
+  const text = qc.caption_short.replace(/^[#*]+.*?\n+/, '').trim()
+  const preview = text.split(' ').slice(0, 15).join(' ') + '...'
+  return (
+    <div style={{
+      width: '100%', aspectRatio: '3/4',
+      background: 'linear-gradient(160deg, ' + qc.primary_color + ' 0%, ' + shadeColor(qc.primary_color, -45) + ' 100%)',
+      borderRadius: '10px', padding: '20px',
+      display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '110px', height: '110px', borderRadius: '50%', background: 'rgba(255,255,255,0.07)' }} />
+      <div style={{ position: 'absolute', bottom: '-35px', left: '-35px', width: '150px', height: '150px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+      <div>
+        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', margin: 0 }}>{qc.business_name}</p>
+        <div style={{ width: '32px', height: '3px', background: qc.accent_color, marginTop: '8px', borderRadius: '2px' }} />
+      </div>
+      <div>
+        <p style={{ fontSize: '16px', color: '#FFFFFF', fontWeight: 700, lineHeight: 1.55, margin: 0 }}>{preview}</p>
+      </div>
+      <div>
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.2)', marginBottom: '10px' }} />
+        <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.65)', margin: 0, fontStyle: 'italic' }}>{qc.one_liner}</p>
+      </div>
+    </div>
+  )
+}
+
+// Food photo dengan teks overlay branded di bagian bawah
+function FoodPhotoWithOverlay({ url, qc }: { url: string; qc?: QuoteCard }) {
+  return (
+    <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: '10px', overflow: 'hidden', position: 'relative' }}>
+      <img src={url} alt='Food' style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      {/* Gradient overlay bawah untuk teks */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)',
+        padding: '24px 16px 16px',
+      }}>
+        {qc && (
+          <>
+            <p style={{ fontSize: '13px', color: '#FFFFFF', fontWeight: 700, margin: '0 0 4px', lineHeight: 1.4 }}>
+              {qc.caption_short.replace(/^[#*]+.*?\n+/, '').trim().split(' ').slice(0,10).join(' ')}...
+            </p>
+            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.75)', margin: 0, fontWeight: 600, letterSpacing: '0.06em' }}>
+              {qc.business_name}
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PostImages({ post, kitId, postIndex, onUpdate }: {
+  post: Post; kitId?: string; postIndex: number; onUpdate: (index: number, data: Partial<Post>) => void
+}) {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const hasImages = !!(post.food_image_url || post.quote_card)
@@ -95,8 +108,16 @@ function PostImages({ post, kitId, postIndex }: { post: Post; kitId?: string; po
         body: JSON.stringify({ brand_kit_id: kitId, post_index: postIndex }),
       })
       const data = await res.json()
-      if (data.ok) window.location.reload()
-      else setError(data.error || 'Gagal')
+      if (data.ok) {
+        // Update state lokal — tidak reload halaman
+        onUpdate(postIndex, {
+          food_image_url: data.food_image_url,
+          quote_card: data.quote_card,
+          images_generated_at: new Date().toISOString(),
+        })
+      } else {
+        setError(data.error || 'Gagal generate')
+      }
     } catch(e) { setError(String(e)) }
     setGenerating(false)
   }
@@ -104,47 +125,75 @@ function PostImages({ post, kitId, postIndex }: { post: Post; kitId?: string; po
   return (
     <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, margin: 0 }}>Visuals (1080x1350 IG Portrait)</p>
-        <button onClick={(e) => { e.stopPropagation(); generate() }} disabled={generating}
-          style={{ background: hasImages ? 'white' : '#1D9E75', color: hasImages ? '#1D9E75' : 'white', border: '1.5px solid #1D9E75', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+        <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, margin: 0 }}>
+          Visuals (1080x1350 IG Portrait)
+        </p>
+        <button
+          onClick={(e) => { e.stopPropagation(); generate() }}
+          disabled={generating}
+          style={{
+            background: hasImages ? 'white' : '#1D9E75',
+            color: hasImages ? '#1D9E75' : 'white',
+            border: '1.5px solid #1D9E75', borderRadius: '8px',
+            padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+          }}
+        >
           {generating ? 'Generating...' : hasImages ? 'Regenerate' : 'Generate Visual'}
         </button>
       </div>
+
       {error && <p style={{ fontSize: '12px', color: '#E53935', marginBottom: '8px' }}>{error}</p>}
+
       {generating && (
         <div style={{ background: '#F0FBF7', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', color: '#1D9E75', fontWeight: 600, margin: 0 }}>Ideogram V2 generating food photo...</p>
-          <p style={{ fontSize: '12px', color: '#555', marginTop: '4px' }}>~20 detik</p>
+          <p style={{ fontSize: '13px', color: '#1D9E75', fontWeight: 600, margin: '0 0 4px' }}>
+            Ideogram V2 sedang generate foto makanan...
+          </p>
+          <p style={{ fontSize: '12px', color: '#555', margin: 0 }}>~20 detik</p>
         </div>
       )}
+
       {!generating && hasImages && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          {/* Quote card — gambar branded dengan teks */}
           {post.quote_card && (
             <div>
-              <p style={{ fontSize: '11px', color: '#888', marginBottom: '6px', fontWeight: 600 }}>Quote Card</p>
+              <p style={{ fontSize: '11px', color: '#888', marginBottom: '6px', fontWeight: 600 }}>
+                Quote Card (teks + brand)
+              </p>
               <QuoteCardDiv qc={post.quote_card} />
-              <p style={{ fontSize: '10px', color: '#AAA', marginTop: '4px' }}>1080x1350</p>
+              <p style={{ fontSize: '10px', color: '#AAA', marginTop: '4px' }}>1080x1350 — siap posting</p>
             </div>
           )}
+          {/* Food photo dengan teks overlay */}
           {post.food_image_url ? (
             <div>
-              <p style={{ fontSize: '11px', color: '#888', marginBottom: '6px', fontWeight: 600 }}>Food Photo (AI)</p>
-              <img src={post.food_image_url} alt='Food' style={{ width: '100%', borderRadius: '10px', display: 'block', aspectRatio: '3/4', objectFit: 'cover' }} />
-              <p style={{ fontSize: '10px', color: '#AAA', marginTop: '4px' }}>1080x1350</p>
+              <p style={{ fontSize: '11px', color: '#888', marginBottom: '6px', fontWeight: 600 }}>
+                Food Photo + Teks Overlay
+              </p>
+              <FoodPhotoWithOverlay url={post.food_image_url} qc={post.quote_card} />
+              <p style={{ fontSize: '10px', color: '#AAA', marginTop: '4px' }}>1080x1350 — siap posting</p>
             </div>
           ) : (
             <div style={{ background: '#F5F5F5', borderRadius: '10px', aspectRatio: '3/4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ fontSize: '12px', color: '#AAA', textAlign: 'center', padding: '16px' }}>Food photo tidak tersedia. Klik Regenerate.</p>
+              <p style={{ fontSize: '12px', color: '#AAA', textAlign: 'center', padding: '16px', margin: 0 }}>
+                Food photo tidak tersedia.<br/>Klik Regenerate.
+              </p>
             </div>
           )}
         </div>
       )}
+
       {!hasImages && !generating && (
         <div style={{ background: '#F9F9F9', border: '1px dashed #DDD', borderRadius: '10px', padding: '16px', textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', color: '#888', margin: '0 0 8px' }}>Klik Generate Visual:</p>
+          <p style={{ fontSize: '13px', color: '#888', margin: '0 0 8px' }}>Klik Generate untuk buat 2 visual:</p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', background: '#E8F7F2', color: '#1D9E75', padding: '4px 12px', borderRadius: '100px', fontWeight: 600 }}>Quote Card branded</span>
-            <span style={{ fontSize: '12px', background: '#E8F7F2', color: '#1D9E75', padding: '4px 12px', borderRadius: '100px', fontWeight: 600 }}>Food Photo AI</span>
+            <span style={{ fontSize: '12px', background: '#E8F7F2', color: '#1D9E75', padding: '4px 12px', borderRadius: '100px', fontWeight: 600 }}>
+              Quote Card (teks + brand color)
+            </span>
+            <span style={{ fontSize: '12px', background: '#E8F7F2', color: '#1D9E75', padding: '4px 12px', borderRadius: '100px', fontWeight: 600 }}>
+              Food Photo + Teks Overlay
+            </span>
           </div>
         </div>
       )}
@@ -153,9 +202,15 @@ function PostImages({ post, kitId, postIndex }: { post: Post; kitId?: string; po
 }
 
 export function ContentTab({ data, kitId }: { data: Record<string, unknown>; kitId?: string }) {
-  const posts = (data.posts as Post[]) || []
+  const rawPosts = (data.posts as Post[]) || []
+  const [posts, setPosts] = useState<Post[]>(rawPosts)
   const [expanded, setExpanded] = useState<number | null>(null)
   const [copied, setCopied] = useState<number | null>(null)
+
+  // Update post state lokal setelah generate (tanpa reload)
+  function handleUpdate(origIndex: number, updates: Partial<Post>) {
+    setPosts(prev => prev.map((p, i) => i === origIndex ? { ...p, ...updates } : p))
+  }
 
   const filtered = posts.filter(p => p.platform === 'Instagram' || p.platform === 'TikTok')
 
@@ -191,6 +246,7 @@ export function ContentTab({ data, kitId }: { data: Record<string, unknown>; kit
           </div>
         ))}
       </div>
+
       {filtered.map((post, idx) => {
         const isOpen = expanded === idx
         const color = PLATFORM_COLORS[post.platform] || '#888'
@@ -198,13 +254,13 @@ export function ContentTab({ data, kitId }: { data: Record<string, unknown>; kit
         const origIdx = posts.indexOf(post)
         const hasVis = !!(post.food_image_url || post.quote_card)
         return (
-          <div key={idx} style={{ background: 'white', border: isOpen ? '2px solid #1D9E75' : '1px solid #E8E8E8', borderRadius: '12px', overflow: 'hidden' }}>
+          <div key={origIdx} style={{ background: 'white', border: isOpen ? '2px solid #1D9E75' : '1px solid #E8E8E8', borderRadius: '12px', overflow: 'hidden' }}>
             <div onClick={() => setExpanded(isOpen ? null : idx)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', cursor: 'pointer' }}>
               <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#1D9E75', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>{post.day}</div>
               <span style={{ background: color + '18', color, padding: '3px 10px', borderRadius: '100px', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>{post.platform}</span>
               <span style={{ background: '#F5F5F5', color: '#555', padding: '3px 10px', borderRadius: '100px', fontSize: '12px', fontWeight: 600, flexShrink: 0 }}>{post.type}</span>
               {hasVis && <span style={{ fontSize: '10px', background: '#E8F7F2', color: '#1D9E75', padding: '2px 8px', borderRadius: '100px', fontWeight: 600, flexShrink: 0 }}>Visual siap</span>}
-              <p style={{ flex: 1, fontSize: '13px', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{(post.caption || '').slice(0, 70)}</p>
+              <p style={{ flex: 1, fontSize: '13px', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{(post.caption || '').replace(/^[#*].*?\n/, '').trim().slice(0, 70)}</p>
               <span style={{ color: '#BBB', fontSize: '16px', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>&#9660;</span>
             </div>
             {isOpen && (
@@ -221,7 +277,7 @@ export function ContentTab({ data, kitId }: { data: Record<string, unknown>; kit
                   </button>
                   <p style={{ fontSize: '12px', color: '#AAA', marginLeft: 'auto' }}>Hari ke-{post.day} &middot; {post.platform}</p>
                 </div>
-                <PostImages post={post} kitId={kitId} postIndex={origIdx} />
+                <PostImages post={post} kitId={kitId} postIndex={origIdx} onUpdate={handleUpdate} />
               </div>
             )}
           </div>
