@@ -7,52 +7,60 @@ export const maxDuration = 60
 
 function cleanCaption(raw: string): string {
   return raw
-    .replace(/^[-*#]+\s*Caption.*?\n+/gi, '')
-    .replace(/^\*\*.*?\*\*\n+/g, '')
-    .replace(/^---+\n*/g, '')
+    .replace(/^[#*-]+\s*Caption.*?\n+/gi, '')
+    .replace(/^\*\*.*?\*\*\s*\n+/g, '')
+    .replace(/^---+\s*\n*/g, '')
     .trim()
 }
 
-// Deteksi industri/produk dari onboarding dan buat konteks visual yang tepat
-function buildVisualContext(product: string, bizName: string, location: string) {
+// Ekstrak headline terbaik dari caption untuk overlay gambar
+function extractHeadline(caption: string): string {
+  const clean = cleanCaption(caption)
+  const first = clean.split(/[.!?\n]/)[0]?.trim() || clean
+  if (first.length <= 60) return first
+  const words = first.split(' ')
+  let result = ''
+  for (const word of words) {
+    if ((result + ' ' + word).trim().length > 55) break
+    result = (result + ' ' + word).trim()
+  }
+  return result + '...'
+}
+
+function buildVisualContext(product: string) {
   const p = product.toLowerCase()
-  
-  // Nasi Padang / Masakan Minang
   if (p.includes('padang') || p.includes('minang') || p.includes('rendang') || p.includes('gulai')) {
     return {
       cuisine: 'Nasi Padang (Minangkabau cuisine)',
-      dishes: 'rendang sapi, gulai ayam, ayam pop, telur balado, sambal lado hijau, gulai nangka, perkedel, nasi putih panas',
-      props: 'piring putih atau piring rotan, daun pisang, meja kayu jati, sambal di mangkuk kecil, sendok dan garpu (BUKAN sumpit)',
-      style: 'warm golden Indonesian food photography, steam rising from hot rice, rich dark rendang sauce, vibrant green sambal',
-      forbidden: 'NO chopsticks, NO sushi, NO curry powder jar, NO wok, NO Chinese or Japanese props, NO noodles, NO fried rice in a bowl with chopsticks',
+      dishes: 'rendang sapi, gulai ayam, ayam pop, telur balado, sambal lado hijau, nasi putih panas',
+      props: 'piring putih atau piring rotan, daun pisang, meja kayu jati, sendok dan garpu (BUKAN sumpit)',
+      style: 'warm golden Indonesian food photography, steam rising, rich dark rendang sauce, vibrant green sambal',
+      forbidden: 'NO chopsticks, NO sushi, NO curry jar, NO Chinese props, NO noodles',
     }
   }
-  // Warung / Masakan Rumahan
   if (p.includes('warung') || p.includes('rumahan') || p.includes('masakan')) {
     return {
-      cuisine: 'Indonesian home cooking (masakan rumahan)',
-      dishes: 'nasi putih, lauk pauk Indonesia, sayur bening, tempe goreng, ikan bakar, sambal terasi',
-      props: 'piring bersih sederhana, meja kayu, daun pisang, sendok garpu',
-      style: 'warm homestyle Indonesian food photography, rustic wooden table, natural daylight',
-      forbidden: 'NO chopsticks, NO sushi, NO ramen, NO East Asian styling',
+      cuisine: 'Indonesian home cooking',
+      dishes: 'nasi putih, lauk pauk Indonesia, sayur, tempe goreng, sambal terasi',
+      props: 'piring sederhana, meja kayu, daun pisang, sendok garpu',
+      style: 'warm homestyle Indonesian food photography, natural daylight',
+      forbidden: 'NO chopsticks, NO sushi, NO East Asian styling',
     }
   }
-  // Kue / Jajanan
-  if (p.includes('kue') || p.includes('jajan') || p.includes('snack') || p.includes('cake')) {
+  if (p.includes('kue') || p.includes('jajan') || p.includes('cake') || p.includes('bakery')) {
     return {
       cuisine: 'Indonesian traditional snacks and cakes',
-      dishes: 'kue tradisional Indonesia, jajanan pasar, kue basah, klepon, onde-onde',
-      props: 'piring anyaman, daun pandan, meja kayu, warna-warna cerah',
-      style: 'bright cheerful Indonesian bakery photography, colorful traditional cakes',
-      forbidden: 'NO Western-style cakes only, must show Indonesian elements',
+      dishes: 'kue tradisional, jajanan pasar, klepon, onde-onde, kue basah',
+      props: 'piring anyaman, daun pandan, warna-warna cerah',
+      style: 'bright cheerful Indonesian bakery photography',
+      forbidden: 'NO Western-only styling',
     }
   }
-  // Default: Indonesian food
   return {
     cuisine: 'Indonesian cuisine',
     dishes: product || 'makanan Indonesia',
-    props: 'piring putih bersih, meja kayu, garnish segar, sendok garpu',
-    style: 'authentic Indonesian food photography, warm lighting, appetizing',
+    props: 'piring putih, meja kayu, garnish segar, sendok garpu',
+    style: 'authentic Indonesian food photography, warm lighting',
     forbidden: 'NO chopsticks, NO sushi, NO East Asian food elements',
   }
 }
@@ -95,73 +103,60 @@ export async function POST(request: Request) {
     const location = ob.location || ob.city || 'Indonesia'
     const rawCaption = String(post.caption || '')
     const caption = cleanCaption(rawCaption)
+    const headline = extractHeadline(rawCaption)
     const postType = String(post.type || '')
     const oneLiner = String((strategy.golden_one_liner as string) || bizName)
 
-    // Build konteks visual yang spesifik berdasarkan produk
-    const ctx = buildVisualContext(product, bizName, location)
+    // Cek apakah user sudah upload foto produk sendiri
+    const userProductPhoto = ob.product_image_url || ''
+    const hasUserPhoto = userProductPhoto.startsWith('http')
 
     const falKey = process.env.FAL_KEY!
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-    // Generate prompt dengan konteks produk yang sangat spesifik
-    const promptInstruction = 'You are an expert Indonesian food photographer and prompt engineer. ' +
-      'Create a Ideogram V2 food photo prompt. ' +
-      'Business: ' + bizName + ' in ' + location + '. ' +
-      'EXACT cuisine: ' + ctx.cuisine + '. ' +
-      'Featured dishes MUST be: ' + ctx.dishes + '. ' +
-      'Props to use: ' + ctx.props + '. ' +
-      'Photography style: ' + ctx.style + '. ' +
-      'Post type: ' + postType + '. ' +
-      'STRICTLY FORBIDDEN: ' + ctx.forbidden + '. ' +
-      'Requirements: portrait orientation, warm lighting, appetizing, NO text overlay, authentic Indonesian styling. ' +
-      'Max 60 words. English only. Return ONLY the prompt text, nothing else.'
-
-    const promptRes = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 150,
-      system: 'You generate food photography prompts. Always follow the STRICTLY FORBIDDEN list. Never include chopsticks, sushi, or non-Indonesian elements for Indonesian food businesses.',
-      messages: [{ role: 'user', content: promptInstruction }]
-    })
-
-    let foodPrompt = promptRes.content[0].type === 'text' ? promptRes.content[0].text.trim() : ''
-    foodPrompt = foodPrompt.replace(/^["']|["']$/g, '').trim()
-
-    // Safety check: jika prompt masih ada kata-kata terlarang, override dengan fallback yang aman
-    const dangerous = ['chopstick', 'sushi', 'ramen', 'noodle', 'wok', 'chinese', 'japanese', 'curry jar', 'fried rice bowl']
-    const hasDangerous = dangerous.some(w => foodPrompt.toLowerCase().includes(w))
-    if (hasDangerous || !foodPrompt) {
-      foodPrompt = 'Authentic nasi padang Minangkabau served on white plate: rendang sapi, gulai ayam, ayam pop, sambal lado hijau, rice. ' +
-        'Wooden table, daun pisang garnish, Indonesian batik cloth, warm golden light, steam rising. ' +
-        'Portrait food photography, appetizing, no text, no chopsticks, Indonesian sendok garpu only.'
-    }
-
-    console.log('Food prompt:', foodPrompt.slice(0, 100))
-    console.log('Cuisine context:', ctx.cuisine)
-
     let foodImageUrl = ''
-    try {
-      const falRes = await fetch('https://fal.run/fal-ai/ideogram/v2', {
-        method: 'POST',
-        headers: { 'Authorization': 'Key ' + falKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: foodPrompt,
-          style_type: 'REALISTIC',
-          aspect_ratio: '3:4',
-          num_images: 1,
-          expand_prompt: false,
-        }),
+
+    if (hasUserPhoto) {
+      // Gunakan foto produk user yang sudah diupload — langsung pakai tanpa generate baru
+      // Ini lebih kontekstual karena adalah foto asli produk mereka
+      foodImageUrl = userProductPhoto
+      console.log('Using user product photo:', userProductPhoto.slice(0, 60))
+    } else {
+      // Generate dengan Ideogram V2 berdasarkan konteks bisnis
+      const ctx = buildVisualContext(product)
+
+      const promptRes = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 120,
+        system: 'You generate food photography prompts. STRICTLY follow the forbidden list. Never use chopsticks for Indonesian food.',
+        messages: [{
+          role: 'user',
+          content: 'Prompt for Ideogram V2 food photo. Business: ' + bizName + ' in ' + location + '. EXACT cuisine: ' + ctx.cuisine + '. Dishes: ' + ctx.dishes + '. Props: ' + ctx.props + '. Style: ' + ctx.style + '. Post type: ' + postType + '. FORBIDDEN: ' + ctx.forbidden + '. No text overlay. Portrait 3:4. Max 55 words English. Return ONLY the prompt.'
+        }]
       })
-      if (falRes.ok) {
-        const d = await falRes.json()
-        foodImageUrl = d.images?.[0]?.url || ''
-        console.log('Food image:', foodImageUrl ? 'OK ' + foodImageUrl.slice(0,50) : 'EMPTY')
-      } else {
-        const err = await falRes.text()
-        console.error('Ideogram error:', falRes.status, err.slice(0, 200))
+
+      let foodPrompt = promptRes.content[0].type === 'text' ? promptRes.content[0].text.trim().replace(/^["']|["']$/g, '') : ''
+
+      const dangerous = ['chopstick', 'sushi', 'ramen', 'noodle', 'chinese', 'japanese', 'curry jar']
+      if (dangerous.some(w => foodPrompt.toLowerCase().includes(w)) || !foodPrompt) {
+        foodPrompt = 'Authentic nasi padang Minangkabau on white plate: rendang, gulai ayam, sambal lado, white rice. Wooden table, daun pisang, warm golden light. Portrait food photography, no text, Indonesian sendok garpu only.'
       }
-    } catch(e) {
-      console.error('Fal error:', e)
+
+      console.log('Generating with prompt:', foodPrompt.slice(0, 80))
+
+      try {
+        const falRes = await fetch('https://fal.run/fal-ai/ideogram/v2', {
+          method: 'POST',
+          headers: { 'Authorization': 'Key ' + falKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: foodPrompt, style_type: 'REALISTIC', aspect_ratio: '3:4', num_images: 1, expand_prompt: false }),
+        })
+        if (falRes.ok) {
+          const d = await falRes.json()
+          foodImageUrl = d.images?.[0]?.url || ''
+        } else {
+          console.error('Ideogram error:', falRes.status, await falRes.text().then(t => t.slice(0,200)))
+        }
+      } catch(e) { console.error('Fal error:', e) }
     }
 
     const quoteCard = {
@@ -172,6 +167,7 @@ export async function POST(request: Request) {
       secondary_color: secondary,
       accent_color: accent,
       post_type: postType,
+      headline: headline,
     }
 
     const updatedPosts = [...posts]
@@ -179,7 +175,7 @@ export async function POST(request: Request) {
       ...post,
       food_image_url: foodImageUrl,
       quote_card: quoteCard,
-      food_prompt: foodPrompt,
+      used_user_photo: hasUserPhoto,
       images_generated_at: new Date().toISOString(),
     }
     await adminClient.from('brand_kits')
@@ -187,12 +183,11 @@ export async function POST(request: Request) {
       .eq('id', brand_kit_id)
 
     return NextResponse.json({
-      ok: true,
-      post_index,
+      ok: true, post_index,
       food_image_url: foodImageUrl,
       has_food: !!foodImageUrl,
+      used_user_photo: hasUserPhoto,
       quote_card: quoteCard,
-      prompt_used: foodPrompt.slice(0, 100),
     })
   } catch (err) {
     console.error('generate-post-images:', err)
