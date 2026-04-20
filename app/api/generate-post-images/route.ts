@@ -5,6 +5,18 @@ import Anthropic from '@anthropic-ai/sdk'
 
 export const maxDuration = 60
 
+function cleanCaption(text: string): string {
+  return text
+    .replace(/^#+\s+.*(\n|$)/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/---+.*/g, '')
+    .replace(/Caption \d+[:\s].*/gi, '')
+    .replace(/^[\s\n]+|[\s\n]+$/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
@@ -31,30 +43,42 @@ export async function POST(request: Request) {
     const content = (kit.content_data || {}) as Record<string, unknown>
     const posts = (content.posts as Array<Record<string, unknown>>) || []
     const post = posts[post_index]
-    if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+    if (!post) return NextResponse.json({ error: 'Post not found at index ' + post_index }, { status: 404 })
 
     const colors = (visual.colors as Array<{hex:string,name:string}>) || []
     const primary = colors[0]?.hex || '#8B4513'
     const secondary = colors[1]?.hex || '#D4A574'
     const accent = colors[2]?.hex || '#2D5016'
     const bizName = (ob.business_name || kit.business_name || '').split(',')[0].trim()
-    const product = ob.product_service || ''
-    const caption = String(post.caption || '')
+    const product = ob.product_service || 'masakan Indonesia'
+    const rawCaption = String(post.caption || '')
+    const caption = cleanCaption(rawCaption)
     const postType = String(post.type || '')
-    const oneLiner = String((strategy.golden_one_liner as string) || '')
+    const oneLiner = String((strategy.golden_one_liner as string) || bizName)
 
-    const falKey = process.env.FAL_KEY!
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const falKey = process.env.FAL_KEY
+    if (!falKey) return NextResponse.json({ error: 'FAL_KEY not set' }, { status: 500 })
 
-    // 1. Generate food photo with Ideogram V2 - portrait 4:5 for IG
-    // Build contextual food photo prompt
+    // 1. Generate short quote untuk quote card (bukan caption panjang)
+    const quoteRes = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 60,
+      system: 'Kamu copywriter Instagram. Buat 1 kalimat pendek yang powerful dan emosional untuk quote card. Maksimal 10 kata. Bahasa Indonesia. Tidak ada tanda baca berlebihan. Langsung kalimat saja tanpa penjelasan.',
+      messages: [{ role: 'user', content: 'Buat quote card untuk post ' + postType + ' dari bisnis ' + bizName + '. Produk: ' + product + '. Tema caption: ' + caption.slice(0, 60) }]
+    })
+    const quoteText = quoteRes.content[0].type === 'text' ? quoteRes.content[0].text.trim().replace(/["*#]/g, '') : oneLiner
+
+    // 2. Generate food photo prompt
     const promptRes = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 150,
-      messages: [{ role: 'user', content: 'Write an Ideogram V2 prompt for a beautiful Instagram food photo for this post. Business: ' + bizName + '. Product: ' + product + '. Post type: ' + postType + '. Caption theme: ' + caption.slice(0, 80) + '. Must be: authentic Indonesian food photography, warm lighting, wooden table, natural props like daun pisang or batik cloth. Portrait orientation 4:5. No text overlay. Max 60 words. English only. Return just the prompt.' }]
+      max_tokens: 80,
+      system: 'Write a concise Ideogram V2 food photo prompt. English only. No text in image. Return only the prompt.',
+      messages: [{ role: 'user', content: 'Instagram food photo for: ' + bizName + ', ' + product + '. Post type: ' + postType + '. Warm Indonesian kitchen atmosphere, wooden table, natural daylight. Portrait 4:5. Max 50 words.' }]
     })
-    const foodPrompt = promptRes.content[0].type === 'text' ? promptRes.content[0].text.trim() : 'Beautiful Indonesian nasi padang food photography, warm lighting, wooden table, authentic Minangkabau cuisine, portrait format'
+    const foodPrompt = promptRes.content[0].type === 'text' ? promptRes.content[0].text.trim() : 'Authentic Indonesian nasi padang food, warm lighting, wooden table, portrait'
 
+    // 3. Call Ideogram V2 for food photo
     const falRes = await fetch('https://fal.run/fal-ai/ideogram/v2', {
       method: 'POST',
       headers: { 'Authorization': 'Key ' + falKey, 'Content-Type': 'application/json' },
@@ -65,25 +89,28 @@ export async function POST(request: Request) {
     if (falRes.ok) {
       const falData = await falRes.json()
       foodImageUrl = falData.images?.[0]?.url || ''
+      console.log('food photo:', foodImageUrl.slice(0, 80))
     } else {
-      console.error('fal error:', falRes.status, await falRes.text())
+      const errText = await falRes.text()
+      console.error('fal error:', falRes.status, errText.slice(0, 100))
     }
 
-    // 2. Quote card data — akan di-render di frontend pakai Canvas
+    // 4. Build quote card data
     const quoteCard = {
-      caption_short: caption.slice(0, 120) + (caption.length > 120 ? '...' : ''),
+      quote_text: quoteText,
       business_name: bizName,
-      one_liner: oneLiner.slice(0, 60),
+      one_liner: oneLiner.slice(0, 55),
       primary_color: primary,
       secondary_color: secondary,
       accent_color: accent,
       post_type: postType,
     }
 
-    // Update post dengan image data
+    // 5. Update post — also clean the caption
     const updatedPosts = [...posts]
     updatedPosts[post_index] = {
       ...post,
+      caption: caption, // cleaned caption
       food_image_url: foodImageUrl,
       quote_card: quoteCard,
       food_prompt: foodPrompt,
@@ -91,7 +118,7 @@ export async function POST(request: Request) {
     }
     await adminClient.from('brand_kits').update({ content_data: { ...content, posts: updatedPosts } }).eq('id', brand_kit_id)
 
-    return NextResponse.json({ ok: true, post_index, food_image_url: foodImageUrl, quote_card: quoteCard })
+    return NextResponse.json({ ok: true, post_index, food_image_url: foodImageUrl, quote_text: quoteText, quote_card: quoteCard })
   } catch (err) {
     console.error('generate-post-images:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
