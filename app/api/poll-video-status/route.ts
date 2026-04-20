@@ -10,45 +10,52 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { brand_kit_id, post_index, request_id } = await request.json()
-    if (!request_id) return NextResponse.json({ error: 'request_id required' }, { status: 400 })
+    const { brand_kit_id, post_index, request_id, status_url, response_url } = await request.json()
+
+    if (!status_url && !request_id) {
+      return NextResponse.json({ status: 'error', error: 'status_url or request_id required' })
+    }
 
     const falKey = process.env.FAL_KEY!
 
-    // fal queue status — pakai GET bukan POST
-    const statusRes = await fetch(
-      `https://queue.fal.run/fal-ai/ltx-video/image-to-video/requests/${request_id}/status`,
-      {
-        method: 'GET',
-        headers: { 'Authorization': 'Key ' + falKey },
-      }
-    )
+    // Pakai status_url yang dikembalikan fal saat submit — ini adalah URL yang benar
+    // Kalau tidak ada, fallback ke build manual (legacy support)
+    const checkUrl = status_url || `https://queue.fal.run/fal-ai/ltx-video/image-to-video/requests/${request_id}/status`
+
+    console.log('Polling status_url:', checkUrl.slice(0, 100))
+
+    const statusRes = await fetch(checkUrl, {
+      method: 'GET',
+      headers: { 'Authorization': 'Key ' + falKey },
+    })
 
     if (!statusRes.ok) {
       const errText = await statusRes.text()
       console.error('fal status error:', statusRes.status, errText.slice(0, 200))
-      return NextResponse.json({ status: 'error', error: 'Status check failed: ' + statusRes.status + ' ' + errText.slice(0, 100) })
+      return NextResponse.json({ status: 'error', error: 'Status check gagal: HTTP ' + statusRes.status })
     }
 
     const statusData = await statusRes.json()
     const queueStatus = statusData.status // 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED'
 
-    console.log('fal queue status:', queueStatus, 'request_id:', request_id)
+    console.log('Queue status:', queueStatus, '| position:', statusData.queue_position)
 
     if (queueStatus === 'COMPLETED') {
-      // Ambil hasil — juga pakai GET
-      const resultRes = await fetch(
-        `https://queue.fal.run/fal-ai/ltx-video/image-to-video/requests/${request_id}`,
-        {
-          method: 'GET',
-          headers: { 'Authorization': 'Key ' + falKey },
-        }
-      )
+      // Ambil hasil — pakai response_url dari fal, atau build dari request_id
+      const resultUrl = response_url || statusData.response_url
+        || `https://queue.fal.run/fal-ai/ltx-video/image-to-video/requests/${request_id}`
+
+      console.log('Fetching result from:', resultUrl.slice(0, 100))
+
+      const resultRes = await fetch(resultUrl, {
+        method: 'GET',
+        headers: { 'Authorization': 'Key ' + falKey },
+      })
 
       if (!resultRes.ok) {
         const errText = await resultRes.text()
         console.error('fal result error:', resultRes.status, errText.slice(0, 200))
-        return NextResponse.json({ status: 'error', error: 'Result fetch failed: ' + resultRes.status })
+        return NextResponse.json({ status: 'error', error: 'Result fetch gagal: HTTP ' + resultRes.status })
       }
 
       const resultData = await resultRes.json()
@@ -57,14 +64,16 @@ export async function POST(request: Request) {
       console.log('Video URL:', videoUrl.slice(0, 80))
 
       if (!videoUrl) {
-        return NextResponse.json({ status: 'error', error: 'No video URL in result: ' + JSON.stringify(resultData).slice(0, 200) })
+        return NextResponse.json({
+          status: 'error',
+          error: 'No video URL in result. Keys: ' + Object.keys(resultData).join(', ')
+        })
       }
 
-      // Simpan video URL ke database
+      // Simpan ke database
       const adminClient = createAdminClient()
       const { data: kit } = await adminClient
-        .from('brand_kits').select('content_data')
-        .eq('id', brand_kit_id).single()
+        .from('brand_kits').select('content_data').eq('id', brand_kit_id).single()
 
       if (kit) {
         const content = (kit.content_data || {}) as Record<string, unknown>
@@ -87,7 +96,7 @@ export async function POST(request: Request) {
     }
 
     if (queueStatus === 'FAILED') {
-      const errMsg = statusData.error || statusData.detail || 'Video generation failed'
+      const errMsg = statusData.error || statusData.detail || 'Video generation failed di fal'
       console.error('fal job FAILED:', errMsg)
       return NextResponse.json({ status: 'error', error: errMsg })
     }
