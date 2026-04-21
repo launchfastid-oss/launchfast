@@ -2,8 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
-// TEST MODE ONLY — bypass payment, langsung generate brand kit
-// Hapus atau disable route ini saat production launch
+// TEST MODE ONLY — hapus saat production launch
 
 export async function POST(request: Request) {
   try {
@@ -27,49 +26,34 @@ export async function POST(request: Request) {
     let orderId: string
 
     if (existing) {
-      // Update order yang ada ke paid
+      // Update status ke paid
       orderId = existing.id
-      await adminClient.from('orders')
+      await adminClient
+        .from('orders')
         .update({ status: 'paid' })
         .eq('id', orderId)
+      console.log('Updated existing order to paid:', orderId)
     } else {
-      // Buat order baru langsung dengan status paid
+      // Buat order baru dengan status paid (tanpa field amount)
       const { data: newOrder, error } = await adminClient
         .from('orders')
         .insert({
           user_id: user.id,
           onboarding_id,
           status: 'paid',
-          amount: 1000000,
         })
         .select('id')
         .single()
 
       if (error || !newOrder) {
+        console.error('Insert order error:', error)
         return NextResponse.json({ error: 'Gagal buat order: ' + error?.message }, { status: 500 })
       }
       orderId = newOrder.id
+      console.log('Created new paid order:', orderId)
     }
 
-    // Trigger generate-full via internal call
-    const baseUrl = request.headers.get('origin') || 'https://launchfast-git-main-launchfastid-oss-projects.vercel.app'
-    const generateRes = await fetch(baseUrl + '/api/generate-full', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-key': process.env.INTERNAL_SECRET || 'bypass-test-mode',
-      },
-      body: JSON.stringify({ order_id: orderId }),
-    })
-
-    const generateData = await generateRes.json()
-
-    return NextResponse.json({
-      ok: true,
-      order_id: orderId,
-      brand_kit_id: generateData.brand_kit_id,
-      status: 'generating',
-    })
+    return NextResponse.json({ ok: true, order_id: orderId })
   } catch (err) {
     console.error('bypass-payment error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
