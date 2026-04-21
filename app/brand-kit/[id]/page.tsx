@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import BrandKitClient from './client'
 
 export default async function BrandKitPage({ params }: { params: { id: string } }) {
@@ -12,5 +13,9 @@ export default async function BrandKitPage({ params }: { params: { id: string } 
 
   if (!kit) redirect('/dashboard')
 
-  return <BrandKitClient kitId={params.id} userId={user.id} />
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center"><p className="text-[#555555]">Memuat...</p></div>}>
+      <BrandKitClient kitId={params.id} userId={user.id} />
+    </Suspense>
+  )
 }
