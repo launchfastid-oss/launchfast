@@ -30,7 +30,7 @@ function GeneratingContent() {
     return () => clearInterval(t)
   }, [])
 
-  // Main effect — trigger once using sessionStorage guard
+  // Main effect - trigger once using sessionStorage guard
   useEffect(() => {
     if (!orderId) return
 
@@ -60,7 +60,7 @@ function GeneratingContent() {
         return
       }
 
-      // Mark sebagai triggered SEBELUM fetch — prevent race condition
+      // Mark sebagai triggered SEBELUM fetch - prevent race condition
       sessionStorage.setItem(sessionKey, 'triggered')
       setStatus('triggering')
 
@@ -169,7 +169,7 @@ function GeneratingContent() {
           </div>
         ) : (
           <p className="text-sm text-[#888888]">
-            Biasanya selesai dalam 2–3 menit.<br />Jangan tutup halaman ini.
+            Biasanya selesai dalam 2-3 menit.<br />Jangan tutup halaman ini.
           </p>
         )}
       </div>
