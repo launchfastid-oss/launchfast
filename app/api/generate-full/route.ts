@@ -207,6 +207,26 @@ Buat panduan legal bisnis dalam Bahasa Indonesia. Kembalikan JSON:
 
     console.log('All AI calls done, inserting brand kit...')
 
+    // Generate landing page HTML
+    let landingPageHtml = ''
+    try {
+      const colors = ((visualData as Record<string,unknown>).colors as Array<{hex:string}>) || []
+      const uvp = String((strategyData as Record<string,unknown>).unique_value_proposition || '')
+      const oneLiner = String((strategyData as Record<string,unknown>).golden_one_liner || '')
+      const primaryColor = colors[0]?.hex || '#1D9E75'
+      const businessName = (ob.business_name || 'Bisnis Anda').split(',')[0].trim()
+      const lpData = await callAI(
+        'Buat landing page HTML untuk bisnis "' + businessName + '". ' +
+        'UVP: ' + uvp + '. One-liner: ' + oneLiner + '. Warna: ' + primaryColor + '. ' +
+        'Buat HTML modern mobile-friendly dengan: hero section, problem/solution, 3 fitur, CTA WhatsApp. ' +
+        'JSON: {"html":"<!DOCTYPE html>...(full HTML)..."} - HTML harus lengkap dan valid.',
+        4000
+      )
+      landingPageHtml = String((lpData as Record<string,unknown>).html || '')
+    } catch(lpErr) {
+      console.error('landing page gen error:', lpErr)
+    }
+
     const { data: brandKit, error: insertError } = await adminClient.from('brand_kits').insert({
       order_id,
       user_id: (order as Record<string, unknown>).user_id as string,
