@@ -89,16 +89,33 @@ Kembalikan JSON:
 Buat visual identity dalam Bahasa Indonesia. WAJIB menghasilkan tepat 3 logo concepts.
 
 Kembalikan JSON:
-{"colors":[{"hex":"#WARNA1","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA2","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA3","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA4","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA5","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"}],"typography":{"heading":{"font":"Nama Font","weight":"700","rationale":"alasan"},"body":{"font":"Nama Font","weight":"400","rationale":"alasan"}},"logo_concepts":[{"style":"Wordmark","description":"Deskripsi detail tampilan logo wordmark  huruf, font character, elemen dekoratif, nuansa visual","tagline":"tagline untuk opsi ini"},{"style":"Lettermark","description":"Deskripsi detail tampilan logo lettermark  inisial yang dipakai, bentuk, treatment huruf, simbol pendamping","tagline":"tagline untuk opsi ini"},{"style":"Combination Mark","description":"Deskripsi detail tampilan logo combination  ikon yang dipakai, makna simbolis, kombinasi dengan teks","tagline":"tagline untuk opsi ini"}],"visual_direction":"deskripsi arah visual keseluruhan brand"}`, 2000),
+{"colors":[{"hex":"#WARNA1","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA2","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA3","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA4","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA5","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"}],"typography":{"heading":{"font":"Nama Font","weight":"700","rationale":"alasan"},"body":{"font":"Nama Font","weight":"400","rationale":"alasan"}},"logo_concepts":[{"style":"Wordmark","description":"Deskripsi visual wordmark: font yang dipakai, treatment huruf, elemen grafis pendamping, komposisi"},{"style":"Lettermark","description":"Deskripsi detail tampilan logo lettermark  inisial yang dipakai, bentuk, treatment huruf, simbol pendamping","tagline":""},{"style":"Combination Mark","description":"Deskripsi detail tampilan logo combination  ikon yang dipakai, makna simbolis, kombinasi dengan teks","tagline":""}],"visual_direction":"deskripsi arah visual keseluruhan brand"}`, 2000),
 
-      // CONTENT: locked, placeholder saja sampai logo dipilih
+      // CONTENT: generate 30 posts penuh sekarang (caption selalu ada, visual lock opsional)
       callAI(`${ctx}
 
-Buat content pillars untuk strategi konten sosial media dalam Bahasa Indonesia.
-CATATAN: Konten post hanya akan digenerate setelah user memilih logo.
+Buat strategi konten 30 hari untuk sosial media bisnis ini dalam Bahasa Indonesia.
 
-Kembalikan JSON:
-{"content_pillars":[{"name":"nama pilar","percentage":30,"description":"deskripsi pilar konten"},{"name":"nama pilar","percentage":25,"description":"deskripsi"},{"name":"nama pilar","percentage":25,"description":"deskripsi"},{"name":"nama pilar","percentage":20,"description":"deskripsi"}],"content_strategy":"deskripsi strategi konten keseluruhan 2-3 kalimat","posting_schedule":{"instagram":"berapa kali per minggu dan waktu terbaik","tiktok":"berapa kali per minggu dan waktu terbaik"},"posts":[],"locked":true,"locked_reason":"Pilih logo terlebih dahulu sebelum konten sosial media dibuat. Konten akan menggunakan logo yang kamu pilih."}`, 1000),
+Kembalikan JSON LENGKAP dengan 30 posts:
+{
+  "content_pillars": [
+    {"name":"nama pilar 1","percentage":35,"description":"deskripsi detail pilar ini"},
+    {"name":"nama pilar 2","percentage":25,"description":"deskripsi detail"},
+    {"name":"nama pilar 3","percentage":25,"description":"deskripsi detail"},
+    {"name":"nama pilar 4","percentage":15,"description":"deskripsi detail"}
+  ],
+  "content_strategy": "deskripsi strategi konten 2-3 kalimat",
+  "posting_schedule": {"instagram":"3x per minggu, Selasa/Kamis/Sabtu jam 7-9 pagi","tiktok":"2x per minggu, Rabu/Minggu"},
+  "posts": [
+    {"day":1,"pillar":"nama pilar","platform":"Instagram","type":"Foto Produk","caption":"caption lengkap dalam bahasa Indonesia yang menarik dan sesuai tone brand","hashtags":"#hashtag1 #hashtag2 #hashtag3"},
+    {"day":3,"pillar":"nama pilar","platform":"TikTok","type":"Video","caption":"caption untuk video","hashtags":"#hashtag"},
+    {"day":5,"pillar":"nama pilar","platform":"Instagram","type":"Carousel","caption":"caption carousel","hashtags":"#hashtag"}
+  ]
+}
+
+WAJIB: Buat tepat 30 posts untuk hari 1-30, campuran Instagram dan TikTok, berbagai tipe konten (Foto Produk, Carousel, Video, Story, Quote, Behind the Scene, Testimoni, Edukasi, Promo).
+Caption harus spesifik untuk bisnis ini, bukan template.
+`, 4000),
 
       // WHATSAPP SCRIPTS
       callAI(`${ctx}
@@ -210,6 +227,7 @@ Buat panduan legal bisnis dalam Bahasa Indonesia. Kembalikan JSON:
       whatsapp_data: whatsappData,
       checklist_data: checklistData,
       legal_data: legalData,
+      landing_page_html: landingPageHtml || null,
       regen_counts: { strategy: 0, visual: 0, content: 0, whatsapp: 0, checklist: 0, legal: 0 },
     }).select('id').single()
 
