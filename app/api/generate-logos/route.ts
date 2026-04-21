@@ -5,85 +5,50 @@ import Anthropic from '@anthropic-ai/sdk'
 
 export const maxDuration = 60
 
-async function tryFalRecraft(prompt: string, style: string): Promise<string | null> {
+async function tryFal(prompt: string, style: string): Promise<string | null> {
   const key = process.env.FAL_KEY
   if (!key) return null
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000) // 15s timeout per logo
     const res = await fetch('https://fal.run/fal-ai/recraft/v3/text-to-image', {
       method: 'POST',
       headers: { 'Authorization': 'Key ' + key, 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, image_size: { width: 1024, height: 1024 }, style, num_images: 1 }),
+      signal: controller.signal,
     })
-    if (!res.ok) {
-      console.error('fal error:', res.status, (await res.text()).slice(0, 100))
-      return null
-    }
+    clearTimeout(timeout)
+    if (!res.ok) { console.error('fal error:', res.status); return null }
     const data = await res.json()
     return data.images?.[0]?.url || null
   } catch (e) {
-    console.error('fal exception:', String(e))
+    console.error('fal failed:', String(e).slice(0,50))
     return null
   }
 }
 
-async function generateSVGLogo(
+async function makeSVG(
   anthropic: Anthropic,
   concept: { style?: string; description?: string },
-  colors: Array<{ hex: string; name: string }>,
-  businessName: string
+  colors: Array<{ hex: string }>,
+  name: string
 ): Promise<string> {
-  const primary = colors[0]?.hex || '#1D9E75'
-  const secondary = colors[1]?.hex || '#2C5F2E'
-  const accent = colors[2]?.hex || '#F4A261'
-
-  const prompt = `Design a professional SVG logo icon for "${businessName}".
-Style: ${concept.style || 'Minimalist'}
-Design concept: ${concept.description || 'clean geometric mark'}
-Brand colors: primary ${primary}, secondary ${secondary}, accent ${accent}
-Canvas: viewBox="0 0 400 400"
-
-Rules:
-- NO text or letters, pure icon/symbol only
-- Use ONLY the brand colors listed above plus white #FFFFFF
-- Clean vector paths, no blur, no shadows, no gradients
-- Centered, 40px padding from edges
-- The icon must VISUALLY represent the concept description
-
-Return ONLY the SVG code starting with <svg and ending with </svg>. Nothing else.`
-
+  const c1 = colors[0]?.hex || '#1D9E75'
+  const c2 = colors[1]?.hex || '#2C5F2E'
+  const c3 = colors[2]?.hex || '#F4A261'
   const res = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 3000,
-    messages: [{ role: 'user', content: prompt }]
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2000,
+    messages: [{ role: 'user', content: `Design a professional SVG logo icon for "${name}".
+Style: ${concept.style || 'Minimalist'}. Concept: ${concept.description || 'geometric mark'}.
+Colors: primary ${c1}, secondary ${c2}, accent ${c3}. Canvas viewBox="0 0 400 400".
+Rules: NO text, clean vector paths, centered, use brand colors only.
+Return ONLY valid SVG starting <svg and ending </svg>.` }]
   })
-  const text = res.content[0].type === 'text' ? res.content[0].text.trim() : ''
-  const match = text.match(/<svg[\s\S]*<\/svg>/i)
-  if (match) return match[0]
-
-  // Minimal fallback
-  return `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="400" fill="white"/>
-  <circle cx="200" cy="200" r="120" fill="${primary}" opacity="0.15"/>
-  <circle cx="200" cy="200" r="80" fill="${primary}"/>
-  <circle cx="200" cy="200" r="50" fill="white"/>
-  <circle cx="200" cy="200" r="30" fill="${accent}"/>
-</svg>`
-}
-
-// Build fal prompt from AI concept description
-function buildFalPrompt(
-  concept: { style?: string; description?: string },
-  businessName: string,
-  colors: Array<{ hex: string; name: string }>,
-  industry: string
-): string {
-  const name = businessName.split(',')[0].trim()
-  const primary = colors[0]?.hex || '#1D9E75'
-  const desc = concept.description || ''
-  const style = concept.style || 'Minimalist'
-
-  // Use the AI's actual description as the core of the prompt
-  return `${style} logo icon for "${name}" brand. ${desc} Brand color ${primary}. ${industry} industry. Professional logo, clean vector, white background, no text, no words, no letters`
+  const text = res.content[0].type === 'text' ? res.content[0].text : ''
+  const m = text.match(/<svg[\s\S]*<\/svg>/i)
+  if (m) return m[0]
+  return `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="400" fill="white"/><circle cx="200" cy="200" r="100" fill="${c1}"/><circle cx="200" cy="200" r="65" fill="white"/><circle cx="200" cy="200" r="40" fill="${c3}"/></svg>`
 }
 
 export async function POST(request: Request) {
@@ -95,82 +60,55 @@ export async function POST(request: Request) {
     const { brand_kit_id } = await request.json()
     const adminClient = createAdminClient()
     const { data: kit } = await adminClient
-      .from('brand_kits')
-      .select('business_name, visual_data, strategy_data')
-      .eq('id', brand_kit_id).single()
+      .from('brand_kits').select('business_name, visual_data').eq('id', brand_kit_id).single()
     if (!kit) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const visual = (kit.visual_data || {}) as Record<string, unknown>
     const colors = (visual.colors as Array<{ hex: string; name: string }>) || []
-
-    // Get logo_concepts from visual_data (generated by AI with specific descriptions)
-    const concepts = (visual.logo_concepts as Array<{ style?: string; description?: string }>) || []
-    // Ensure exactly 3 concepts
-    while (concepts.length < 3) {
-      concepts.push([
-        { style: 'Wordmark', description: 'Clean typographic logo with brand name in bold modern font, simple geometric accent' },
-        { style: 'Lettermark', description: 'Stylized initials monogram with geometric shapes, modern minimal design' },
-        { style: 'Combination Mark', description: 'Icon symbol combined with brand name, professional and memorable' },
-      ][concepts.length] || { style: 'Minimalist', description: 'Clean geometric icon mark' })
-    }
-
-    // Detect industry from business name / strategy
-    const strategy = (kit.strategy_data || {}) as Record<string, unknown>
-    const industry = String((strategy as Record<string, unknown>).unique_value_proposition || kit.business_name).slice(0, 30)
+    const rawConcepts = (visual.logo_concepts as Array<{ style?: string; description?: string }>) || []
+    // Ensure 3 concepts
+    const concepts = [0,1,2].map(i => rawConcepts[i] || [
+      { style: 'Wordmark', description: 'Clean wordmark with brand name in bold modern font, simple geometric accent line below' },
+      { style: 'Lettermark', description: 'Stylized initials monogram with geometric shape, bold and contemporary' },
+      { style: 'Combination Mark', description: 'Simple icon symbol combined with clean typography, professional and memorable' },
+    ][i])
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const name = kit.business_name.split(',')[0].trim()
+    const c1 = colors[0]?.hex || '#1D9E75'
 
-    // fal.ai styles - all valid for Recraft V3
-    const falStyles = [
-      'vector_illustration',
-      'vector_illustration/line_art',
-      'vector_illustration'
-    ]
+    // Build prompts from concept descriptions
+    const falStyles = ['vector_illustration', 'vector_illustration/line_art', 'vector_illustration']
+    const prompts = concepts.map((c, i) =>
+      `${c.style} logo icon for "${name}". ${c.description}. Primary color ${c1}. Professional logo, clean vector, white background, no text, no words`
+    )
 
-    const logoUrls: string[] = []
-    const logoSvgs: string[] = []
-    const usedFal: boolean[] = []
-    const promptsUsed: string[] = []
+    // Try all 3 fal calls in parallel (faster)
+    const [fal0, fal1, fal2] = await Promise.all([
+      tryFal(prompts[0], falStyles[0]),
+      tryFal(prompts[1], falStyles[1]),
+      tryFal(prompts[2], falStyles[2]),
+    ])
+    const falResults = [fal0, fal1, fal2]
 
-    for (let i = 0; i < 3; i++) {
-      const concept = concepts[i]
-      // Build prompt FROM the AI's concept description
-      const falPrompt = buildFalPrompt(concept, kit.business_name, colors, industry)
-      promptsUsed.push(falPrompt)
-      console.log(`Logo ${i+1} prompt: ${falPrompt.slice(0,80)}...`)
-
-      // Try fal.ai
-      const falUrl = await tryFalRecraft(falPrompt, falStyles[i])
-      if (falUrl) {
-        logoUrls.push(falUrl)
-        logoSvgs.push('')
-        usedFal.push(true)
-        console.log(`Logo ${i+1}: fal.ai OK`)
-      } else {
-        // Fallback: Claude SVG using concept description
-        console.log(`Logo ${i+1}: fal failed, using Claude SVG`)
-        const svg = await generateSVGLogo(anthropic, concept, colors, kit.business_name)
-        logoUrls.push('')
-        logoSvgs.push(svg)
-        usedFal.push(false)
-      }
-    }
+    // For failed fal calls, generate SVG (also parallel)
+    const svgPromises = concepts.map((c, i) =>
+      falResults[i] ? Promise.resolve('') : makeSVG(anthropic, c, colors, name)
+    )
+    const svgs = await Promise.all(svgPromises)
 
     const updatedVisual = {
       ...visual,
-      logo_urls: logoUrls,
-      logo_svgs: logoSvgs,
-      logo_prompts: promptsUsed,
+      logo_urls: falResults.map(u => u || ''),
+      logo_svgs: svgs,
+      logo_prompts: prompts,
       logos_generated_at: new Date().toISOString(),
     }
     await adminClient.from('brand_kits').update({ visual_data: updatedVisual }).eq('id', brand_kit_id)
 
-    return NextResponse.json({
-      ok: true,
-      count: logoUrls.filter(u => u).length + logoSvgs.filter(s => s).length,
-      logo_urls: logoUrls,
-      used_fal: usedFal,
-    })
+    const count = falResults.filter(Boolean).length + svgs.filter(Boolean).length
+    console.log(`Logos done: ${falResults.filter(Boolean).length} fal + ${svgs.filter(Boolean).length} SVG = ${count}`)
+    return NextResponse.json({ ok: true, count, used_fal: falResults.map(Boolean) })
   } catch (err) {
     console.error('generate-logos error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
