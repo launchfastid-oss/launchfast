@@ -33,9 +33,10 @@ export default function OnboardingPage() {
   const progress = ((currentStep + 1) / QUESTIONS.length) * 100
   const isUploadStep = q.type === 'upload'
   const isLogoQuestion = q.key === 'has_existing_logo'
+  const isLogoUploadStep = q.key === 'existing_logo_url'
   const hasExistingLogo = answers['has_existing_logo'] === 'Ya, sudah punya logo'
   // Skip step 10 (logo upload) jika user pilih "belum punya logo"
-  // Skip step 10 juga diabaikan dari validasi â handled di handleNext
+  // Skip step 10 juga diabaikan dari validasi Ã¢ÂÂ handled di handleNext
 
   async function handleFileSelect(file: File, bucket = 'product-images', answerKey?: string) {
     if (!file) return
@@ -68,7 +69,7 @@ export default function OnboardingPage() {
       const key = answerKey || q.key
       setAnswers(prev => ({ ...prev, [key]: publicUrl }))
       setUploadPreview(URL.createObjectURL(file))
-      setUploadProgress(isLogo ? 'Logo berhasil diupload! â' : 'Foto berhasil diupload! â')
+      setUploadProgress(isLogo ? 'Logo berhasil diupload! Ã¢ÂÂ' : 'Foto berhasil diupload! Ã¢ÂÂ')
     } catch (err) {
       setError('Gagal upload foto: ' + String(err))
       setUploadProgress('')
@@ -83,7 +84,7 @@ export default function OnboardingPage() {
     }
     // Upload step boleh dilewati (opsional)
     if (isUploadStep && !answers[q.key]) {
-      // Skip Ã¢ÂÂ lanjut ke preview
+      // Skip ÃÂ¢ÃÂÃÂ lanjut ke preview
       if (onboardingId) router.push('/preview?onboarding=' + onboardingId)
       return
     }
@@ -212,7 +213,7 @@ export default function OnboardingPage() {
                     onClick={() => fileInputRef.current?.click()}
                     style={{ border: '2px dashed #1D9E75', borderRadius: '12px', padding: '32px', textAlign: 'center', cursor: 'pointer', background: '#F9FFFE', marginBottom: '12px' }}
                   >
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>ð·ï¸</div>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>Ã°ÂÂÂ·Ã¯Â¸Â</div>
                     <p style={{ fontSize: '14px', fontWeight: 600, color: '#1D9E75', margin: '0 0 4px' }}>Klik untuk upload logo</p>
                     <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>PNG, SVG &bull; Transparan lebih bagus &bull; Maks 5MB</p>
                     {uploadProgress && <p style={{ fontSize: '13px', color: '#555', marginTop: '8px' }}>{uploadProgress}</p>}
