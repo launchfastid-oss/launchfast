@@ -7,6 +7,7 @@ interface VisualData {
   logo_concepts?: Array<{ name: string; description: string; style: string }>
   logo_urls?: string[]
   logo_svgs?: string[]
+  logo_locked_at?: string
   logo_prompts?: string[]
   visual_mood?: string
 }
@@ -234,6 +235,7 @@ export function VisualTab({ data, kitId, onLogoLocked }: { data: Record<string, 
               {validLogos.length > 0 ? `${validLogos.length} logo berhasil dibuat -- SOTA image generation` : 'Belum di-generate . Klik tombol untuk mulai'}
             </p>
           </div>
+          {!d.logo_locked_at && (
           <button
             onClick={handleGenerate}
             disabled={generating}
@@ -251,6 +253,12 @@ export function VisualTab({ data, kitId, onLogoLocked }: { data: Record<string, 
               <>{validLogos.length > 0 ? ' Regenerate' : ' Generate Logos AI'}</>
             )}
           </button>
+          )}
+          {d.logo_locked_at && (
+            <div style={{background:'#E8F7F2',border:'1.5px solid #1D9E75',borderRadius:'8px',padding:'8px 16px',fontSize:'13px',fontWeight:600,color:'#1D9E75',display:'flex',alignItems:'center',gap:'6px'}}>
+              <span>&#10003;</span> Logo Terkunci
+            </div>
+          )}
         </div>
 
         {/* Progress bar */}
