@@ -129,7 +129,40 @@ export function VisualTab({ data, kitId, onLogoLocked }: { data: Record<string, 
   const [genError, setGenError] = useState('')
   const [progress, setProgress] = useState(0)
 
-  const validLogos = (d.logo_urls || []).filter(u => u && u.startsWith('http'))
+  // Combine fal URLs and SVG fallbacks into unified logo list
+  const allLogoCount = Math.max(
+    (d.logo_urls || []).length,
+    (d.logo_svgs || []).length
+  )
+  const validLogos = Array.from({length: allLogoCount}, (_, i) => ({
+    url: (d.logo_urls as string[])?.[i] || '',
+    svg: (d.logo_svgs as string[])?.[i] || '',
+    concept: (d.logo_concepts as Array<{name:string;description:string;style:string}>)?.[i],
+    index: i,
+  })).filter(l => l.url || l.svg)
+
+  const [selectedLogo, setSelectedLogo] = useState<number | null>(null)
+  const [locking, setLocking] = useState(false)
+  const [lockError, setLockError] = useState('')
+
+  async function handlePickLogo(index: number) {
+    if (!kitId) return
+    setSelectedLogo(index)
+    setLocking(true); setLockError('')
+    try {
+      const logo = validLogos[index]
+      const res = await fetch('/api/lock-logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ brand_kit_id: kitId, logo_index: index, logo_url: logo.url, logo_svg: logo.svg })
+      })
+      const result = await res.json()
+      if (result.ok && onLogoLocked) onLogoLocked()
+      else setLockError(result.error || 'Gagal menyimpan logo')
+    } catch(e) { setLockError(String(e)) }
+    setLocking(false)
+  }
 
   async function handleGenerate() {
     if (!kitId) return
@@ -198,7 +231,7 @@ export function VisualTab({ data, kitId, onLogoLocked }: { data: Record<string, 
           <div>
             <p style={{ fontSize: '11px', fontWeight: 700, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Logo AI  Recraft V3</p>
             <p style={{ fontSize: '12px', color: '#888888', marginTop: '4px' }}>
-              {validLogos.length > 0 ? `${validLogos.length} logo berhasil dibuat . SOTA image generation` : 'Belum di-generate . Klik tombol untuk mulai'}
+              {validLogos.length > 0 ? `${validLogos.length} logo berhasil dibuat -- SOTA image generation` : 'Belum di-generate . Klik tombol untuk mulai'}
             </p>
           </div>
           <button
@@ -243,33 +276,50 @@ export function VisualTab({ data, kitId, onLogoLocked }: { data: Record<string, 
 
         {validLogos.length > 0 && !generating && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-            {validLogos.map((url, i) => (
-              <div key={i} style={{ border: '1px solid #E8E8E8', borderRadius: '16px', overflow: 'hidden', transition: 'all 0.2s' }}>
+            {validLogos.map((logo, i) => (
+              <div key={i} style={{ border: selectedLogo === i ? '2px solid #1D9E75' : '1px solid #E8E8E8', borderRadius: '16px', overflow: 'hidden', transition: 'all 0.2s', boxShadow: selectedLogo === i ? '0 0 0 3px rgba(29,158,117,0.15)' : 'none' }}>
                 <div style={{ background: '#FAFAFA', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '220px' }}>
-                  <img src={url} alt={"Logo " + (i+1)} style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }} />
+                  {logo.url ? (
+                    <img src={logo.url} alt={"Logo " + (i+1)} style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }} />
+                  ) : logo.svg ? (
+                    <div dangerouslySetInnerHTML={{ __html: logo.svg }} style={{ width: '100%', maxHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                  ) : null}
                 </div>
                 <div style={{ background: 'white', padding: '14px 16px', borderTop: '1px solid #F0F0F0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <span style={{ background: '#E8F7F2', color: '#1D9E75', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>Opsi {i+1}</span>
-                      {d.logo_concepts?.[i] && (
-                        <p style={{ fontSize: '13px', fontWeight: 700, color: '#1A1A1A', marginTop: '6px' }}>{d.logo_concepts[i].name}</p>
-                      )}
-                    </div>
-                    <a href={url} target="_blank" rel="noopener noreferrer"
-                      style={{ fontSize: '12px', color: '#1D9E75', fontWeight: 600, textDecoration: 'none' }}>
-                      Download 
-                    </a>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ background: '#E8F7F2', color: '#1D9E75', padding: '2px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>Opsi {i+1}</span>
+                    {logo.url && (
+                      <a href={logo.url} target="_blank" rel="noopener noreferrer"
+                        style={{ fontSize: '12px', color: '#1D9E75', fontWeight: 600, textDecoration: 'none' }}>
+                        Download
+                      </a>
+                    )}
                   </div>
-                  {d.logo_concepts?.[i] && (
-                    <p style={{ fontSize: '12px', color: '#555555', marginTop: '6px', lineHeight: 1.5 }}>{d.logo_concepts[i].description}</p>
+                  {logo.concept && (
+                    <p style={{ fontSize: '12px', color: '#555555', marginTop: '4px', lineHeight: 1.5 }}>{logo.concept.description}</p>
                   )}
+                  <button
+                    onClick={() => handlePickLogo(i)}
+                    disabled={locking}
+                    style={{
+                      marginTop: '10px', width: '100%',
+                      background: selectedLogo === i ? '#1D9E75' : 'white',
+                      color: selectedLogo === i ? 'white' : '#1D9E75',
+                      border: '1.5px solid #1D9E75',
+                      borderRadius: '8px', padding: '8px 0',
+                      fontSize: '13px', fontWeight: 600,
+                      cursor: locking ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {selectedLogo === i && locking ? 'Menyimpan...' : selectedLogo === i ? 'Logo Dipilih' : 'Pilih Logo Ini'}
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
 
+        {lockError && <p style={{color:'#E53935',fontSize:'13px',marginTop:'8px'}}>{lockError}</p>}
         {validLogos.length === 0 && !generating && (
           <div style={{ border: '2px dashed #E0E0E0', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}></div>
