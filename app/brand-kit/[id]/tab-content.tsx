@@ -224,7 +224,7 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
           setGenVideo(false)
           return
         }
-        // status === 'pending' Ã¢ÂÂ lanjut poll
+        // status === 'pending' ÃÂ¢ÃÂÃÂ lanjut poll
       }
 
       setVideoError('Timeout setelah 3 menit. Coba lagi.')
@@ -273,7 +273,7 @@ function VideoSection({ post, kitId, postIndex, onUpdate }: {
           <p style={{ fontSize: '13px', color: '#1A1A1A', fontWeight: 600, margin: '0 0 2px' }}>
             {pollMsg || 'LTX Video sedang animate foto...'}
           </p>
-          <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>Async queue Ã¢ÂÂ halaman tidak perlu stay terbuka</p>
+          <p style={{ fontSize: '11px', color: '#888', margin: 0 }}>Async queue ÃÂ¢ÃÂÃÂ halaman tidak perlu stay terbuka</p>
         </div>
       )}
 
@@ -459,7 +459,7 @@ export function ContentTab({ data, kitId }: { data: Record<string, unknown>; kit
   }, {})
 
 
-  // Locked state — konten belum bisa digenerate sebelum logo dipilih
+  // Locked state â konten belum bisa digenerate sebelum logo dipilih
   if (data.locked === true) {
     const lockedReason = (data.locked_reason as string) || 'Pilih dan lock logo terlebih dahulu.'
     return (
@@ -481,21 +481,21 @@ export function ContentTab({ data, kitId }: { data: Record<string, unknown>; kit
                 </div>
               ))}
             </div>
-            {data.content_strategy && (
+            {!!data.content_strategy && (
               <p style={{ fontSize: '13px', color: '#555', lineHeight: 1.6, marginTop: '12px', padding: '12px', background: '#F5F5F5', borderRadius: '8px' }}>
-                {data.content_strategy as string}
+                {String(data.content_strategy)}
               </p>
             )}
           </div>
         )}
         {/* Lock banner */}
         <div style={{ background: '#FFFBEB', border: '2px solid #F59E0B', borderRadius: '16px', padding: '32px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>ð</div>
           <p style={{ fontWeight: 800, fontSize: '18px', color: '#1A1A1A', marginBottom: '8px' }}>Konten Belum Dibuat</p>
           <p style={{ color: '#666', fontSize: '14px', lineHeight: 1.6, maxWidth: '300px', margin: '0 auto 20px' }}>{lockedReason}</p>
           <div style={{ background: '#FEF3C7', borderRadius: '10px', padding: '12px 16px', display: 'inline-block' }}>
             <p style={{ fontSize: '13px', color: '#92400E', fontWeight: 600, margin: 0 }}>
-              👉 Tab Visual → Pilih logo → Klik "Lock Logo Ini"
+              ð Tab Visual â Pilih logo â Klik "Lock Logo Ini"
             </p>
           </div>
         </div>
