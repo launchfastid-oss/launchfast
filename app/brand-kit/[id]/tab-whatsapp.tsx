@@ -18,7 +18,12 @@ export function WhatsappTab({ data }: { data: Record<string, unknown> }) {
     <div className="space-y-4">
       {sections.map(s => {
         const items = d[s.key] as Array<{ name: string; message: string }> | undefined
-        if (!items) return null
+        if (!items || items.length === 0) return (
+          <div key={s.key} className="card" style={{textAlign:'center',padding:'24px',color:'#888',fontSize:'13px'}}>
+            <p style={{fontWeight:600,marginBottom:'4px'}}>{s.label}</p>
+            <p>Belum ada script. Klik Buat Ulang untuk generate.</p>
+          </div>
+        )
         return (
           <div key={s.key} className="card">
             <p className="text-xs font-semibold text-[#1D9E75] uppercase tracking-wide mb-4">{s.label}</p>
@@ -29,7 +34,7 @@ export function WhatsappTab({ data }: { data: Record<string, unknown> }) {
                     <span className="text-sm font-semibold text-[#1A1A1A]">{item.name}</span>
                     <button onClick={() => copyText(item.message, `${s.key}_${i}`)}
                       className="text-xs text-[#1D9E75] border border-[#1D9E75] px-2 py-1 rounded hover:bg-[#E8F7F2]">
-                      {copied === `${s.key}_${i}` ? 'â Disalin' : 'Salin'}
+                      {copied === `${s.key}_${i}` ? 'v Disalin' : 'Salin'}
                     </button>
                   </div>
                   <p className="text-sm text-[#555555] whitespace-pre-line bg-[#F5F5F5] rounded p-3">{item.message}</p>
