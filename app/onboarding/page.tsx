@@ -14,7 +14,7 @@ const QUESTIONS = [
   { step: 7, key: 'price_range', question: 'Kisaran harga produk/jasa kamu?', hint: 'Contoh: Rp 15.000 - Rp 50.000 per porsi', type: 'textarea' },
   { step: 8, key: 'thirty_day_goal', question: 'Goal utama kamu dalam 30 hari pertama?', hint: 'Contoh: Dapat 50 pelanggan baru dan buka cabang ke-2', type: 'textarea' },
   { step: 9, key: 'has_existing_logo', question: 'Apakah bisnis kamu sudah punya logo?', hint: 'Kalau sudah punya logo, kamu bisa langsung upload dan konten akan menggunakan logo tersebut.', type: 'choice', options: ['Ya, sudah punya logo', 'Belum, buat logo baru dengan AI'] },
-  { step: 10, key: 'existing_logo_url', question: 'Upload logo bisnis kamu', hint: 'Format PNG atau SVG dengan background transparan lebih bagus. Maks 5MB.', type: 'logo_upload' },
+  { step: 10, key: 'existing_logo_url', question: 'Upload logo bisnis kamu', hint: 'Format PNG atau SVG dengan background transparan lebih bagus. Maks 5MB.', type: 'upload' },
   { step: 11, key: 'product_image_url', question: 'Upload foto produk kamu (opsional)', hint: 'Foto produk akan dipakai sebagai visual di konten sosial media kamu. Format: JPG/PNG, maks 5MB.', type: 'upload' },
 ] as const
 
@@ -31,11 +31,11 @@ export default function OnboardingPage() {
 
   const q = QUESTIONS[currentStep]
   const progress = ((currentStep + 1) / QUESTIONS.length) * 100
-  const isUploadStep = q.type === 'upload' || q.type === 'logo_upload'
+  const isUploadStep = q.type === 'upload'
   const isLogoQuestion = q.key === 'has_existing_logo'
   const hasExistingLogo = answers['has_existing_logo'] === 'Ya, sudah punya logo'
   // Skip step 10 (logo upload) jika user pilih "belum punya logo"
-  // Skip step 10 juga diabaikan dari validasi — handled di handleNext
+  // Skip step 10 juga diabaikan dari validasi â handled di handleNext
 
   async function handleFileSelect(file: File, bucket = 'product-images', answerKey?: string) {
     if (!file) return
@@ -68,7 +68,7 @@ export default function OnboardingPage() {
       const key = answerKey || q.key
       setAnswers(prev => ({ ...prev, [key]: publicUrl }))
       setUploadPreview(URL.createObjectURL(file))
-      setUploadProgress(isLogo ? 'Logo berhasil diupload! ✓' : 'Foto berhasil diupload! ✓')
+      setUploadProgress(isLogo ? 'Logo berhasil diupload! â' : 'Foto berhasil diupload! â')
     } catch (err) {
       setError('Gagal upload foto: ' + String(err))
       setUploadProgress('')
@@ -83,7 +83,7 @@ export default function OnboardingPage() {
     }
     // Upload step boleh dilewati (opsional)
     if (isUploadStep && !answers[q.key]) {
-      // Skip â lanjut ke preview
+      // Skip Ã¢ÂÂ lanjut ke preview
       if (onboardingId) router.push('/preview?onboarding=' + onboardingId)
       return
     }
@@ -187,7 +187,7 @@ export default function OnboardingPage() {
             )}
 
             {/* Logo Upload */}
-            {q.type === 'logo_upload' && (
+            {isLogoUploadStep && (
               <div>
                 <input
                   ref={fileInputRef}
@@ -212,7 +212,7 @@ export default function OnboardingPage() {
                     onClick={() => fileInputRef.current?.click()}
                     style={{ border: '2px dashed #1D9E75', borderRadius: '12px', padding: '32px', textAlign: 'center', cursor: 'pointer', background: '#F9FFFE', marginBottom: '12px' }}
                   >
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🏷️</div>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>ð·ï¸</div>
                     <p style={{ fontSize: '14px', fontWeight: 600, color: '#1D9E75', margin: '0 0 4px' }}>Klik untuk upload logo</p>
                     <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>PNG, SVG &bull; Transparan lebih bagus &bull; Maks 5MB</p>
                     {uploadProgress && <p style={{ fontSize: '13px', color: '#555', marginTop: '8px' }}>{uploadProgress}</p>}
@@ -259,8 +259,8 @@ export default function OnboardingPage() {
                 className='btn-primary flex-1'
               >
                 {loading ? 'Menyimpan...' :
-                  isUploadStep ? (
-                    q.type === 'logo_upload'
+                  (isUploadStep || isLogoUploadStep) ? (
+                    isLogoUploadStep
                       ? (uploadPreview ? 'Lanjut →' : 'Lewati, buat logo dengan AI')
                       : (uploadPreview ? 'Selesai & Lihat Preview' : 'Lewati, langsung ke preview')
                   ) :
