@@ -89,7 +89,7 @@ Kembalikan JSON:
 Buat visual identity dalam Bahasa Indonesia. WAJIB menghasilkan tepat 3 logo concepts.
 
 Kembalikan JSON:
-{"colors":[{"hex":"#WARNA1","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA2","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA3","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA4","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA5","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"}],"typography":{"heading":{"font":"Nama Font","weight":"700","rationale":"alasan"},"body":{"font":"Nama Font","weight":"400","rationale":"alasan"}},"logo_concepts":[{"style":"Wordmark","description":"Deskripsi detail tampilan logo wordmark Ã¢ÂÂ huruf, font character, elemen dekoratif, nuansa visual","tagline":"tagline untuk opsi ini"},{"style":"Lettermark","description":"Deskripsi detail tampilan logo lettermark Ã¢ÂÂ inisial yang dipakai, bentuk, treatment huruf, simbol pendamping","tagline":"tagline untuk opsi ini"},{"style":"Combination Mark","description":"Deskripsi detail tampilan logo combination Ã¢ÂÂ ikon yang dipakai, makna simbolis, kombinasi dengan teks","tagline":"tagline untuk opsi ini"}],"visual_direction":"deskripsi arah visual keseluruhan brand"}`, 2000),
+{"colors":[{"hex":"#WARNA1","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA2","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA3","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA4","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"},{"hex":"#WARNA5","name":"Nama Warna","usage":"kegunaan","rationale":"alasan"}],"typography":{"heading":{"font":"Nama Font","weight":"700","rationale":"alasan"},"body":{"font":"Nama Font","weight":"400","rationale":"alasan"}},"logo_concepts":[{"style":"Wordmark","description":"Deskripsi detail tampilan logo wordmark  huruf, font character, elemen dekoratif, nuansa visual","tagline":"tagline untuk opsi ini"},{"style":"Lettermark","description":"Deskripsi detail tampilan logo lettermark  inisial yang dipakai, bentuk, treatment huruf, simbol pendamping","tagline":"tagline untuk opsi ini"},{"style":"Combination Mark","description":"Deskripsi detail tampilan logo combination  ikon yang dipakai, makna simbolis, kombinasi dengan teks","tagline":"tagline untuk opsi ini"}],"visual_direction":"deskripsi arah visual keseluruhan brand"}`, 2000),
 
       // CONTENT: locked, placeholder saja sampai logo dipilih
       callAI(`${ctx}
@@ -127,9 +127,9 @@ Buat panduan legal bisnis dalam Bahasa Indonesia. Kembalikan JSON:
           title: "Fondasi Brand",
           tasks: [
             { id: "w1t1", task: "Isi onboarding bisnis (nama, target market, produk)", category: "Brand", priority: "high", estimated_hours: 0.5, completed: true, completed_note: "Selesai saat onboarding" },
-            { id: "w1t2", task: "Review dan lock Golden One-Liner", category: "Brand", priority: "high", estimated_hours: 0.5, completed: hasStrategy, completed_note: hasStrategy ? "AI generated Ã¢ÂÂ review dan sesuaikan" : "" },
+            { id: "w1t2", task: "Review dan lock Golden One-Liner", category: "Brand", priority: "high", estimated_hours: 0.5, completed: hasStrategy, completed_note: hasStrategy ? "AI generated  review dan sesuaikan" : "" },
             { id: "w1t3", task: "Pilih dan lock logo dari 3 opsi AI", category: "Brand", priority: "high", estimated_hours: 1, completed: false, completed_note: "" },
-            { id: "w1t4", task: "Konfirmasi palet warna brand", category: "Brand", priority: "high", estimated_hours: 0.5, completed: hasColors, completed_note: hasColors ? "AI generated Ã¢ÂÂ review dan sesuaikan" : "" },
+            { id: "w1t4", task: "Konfirmasi palet warna brand", category: "Brand", priority: "high", estimated_hours: 0.5, completed: hasColors, completed_note: hasColors ? "AI generated  review dan sesuaikan" : "" },
             { id: "w1t5", task: "Review brand narrative dan brand story", category: "Brand", priority: "medium", estimated_hours: 0.5, completed: hasStrategy, completed_note: hasStrategy ? "AI generated" : "" },
             { id: "w1t6", task: "Setup akun Instagram bisnis", category: "Digital", priority: "high", estimated_hours: 1, completed: false, completed_note: "" },
             { id: "w1t7", task: "Setup akun TikTok bisnis", category: "Digital", priority: "high", estimated_hours: 0.5, completed: false, completed_note: "" },
@@ -164,7 +164,7 @@ Buat panduan legal bisnis dalam Bahasa Indonesia. Kembalikan JSON:
           week: 4,
           title: "Scale & Optimasi",
           tasks: [
-            { id: "w4t1", task: "Evaluasi konten Ã¢ÂÂ mana yang paling engagement tinggi", category: "Digital", priority: "medium", estimated_hours: 1, completed: false, completed_note: "" },
+            { id: "w4t1", task: "Evaluasi konten  mana yang paling engagement tinggi", category: "Digital", priority: "medium", estimated_hours: 1, completed: false, completed_note: "" },
             { id: "w4t2", task: "Broadcast ke list prospek dengan template dari brand kit", category: "Sales", priority: "high", estimated_hours: 1, completed: false, completed_note: "" },
             { id: "w4t3", task: "Review dan update bio semua platform sosmed", category: "Digital", priority: "low", estimated_hours: 0.5, completed: false, completed_note: "" },
             { id: "w4t4", task: "Hitung ROI marketing bulan pertama", category: "Operations", priority: "medium", estimated_hours: 1, completed: false, completed_note: "" },
