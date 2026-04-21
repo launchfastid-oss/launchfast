@@ -464,6 +464,14 @@ export function ContentTab({ data, kitId }: { data: Record<string, unknown>; kit
     const lockedReason = (data.locked_reason as string) || 'Pilih dan lock logo terlebih dahulu.'
     return (
       <div className="space-y-4">
+        {/* Lock banner -- prominent */}
+        <div style={{ background: '#FFF8E1', border: '2px solid #FFB300', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <span style={{ fontSize: '24px', flexShrink: 0 }}>&#128274;</span>
+          <div>
+            <p style={{ fontWeight: 700, color: '#E65100', fontSize: '14px', marginBottom: '4px' }}>Konten terkunci</p>
+            <p style={{ fontSize: '13px', color: '#795548', lineHeight: 1.5 }}>{lockedReason} Setelah logo dipilih, konten 30 hari akan otomatis tersedia.</p>
+          </div>
+        </div>
         {/* Content Pillars tetap ditampilkan */}
         {(data.content_pillars as Array<{name:string;percentage:number;description:string}>)?.length > 0 && (
           <div className="card">
