@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { StrategyTab, VisualTab } from './tab-strategy'
@@ -34,17 +35,28 @@ const TABS = [
 ]
 
 export default function BrandKitClient({ kitId, userId }: { kitId: string; userId: string }) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [kit, setKit] = useState<BrandKit | null>(null)
-  const [activeTab, setActiveTab] = useState('strategy')
   const [loading, setLoading] = useState(true)
   const [regen, setRegen] = useState<string | null>(null)
   const [regenError, setRegenError] = useState<string | null>(null)
 
-  useEffect(() => {
+  // Tab state synced to URL param - survives data refresh
+  const activeTab = searchParams.get('tab') || 'strategy'
+  const setActiveTab = useCallback((tab: string) => {
+    router.replace('?' + 'tab=' + tab, { scroll: false })
+  }, [router])
+
+  const refreshKit = useCallback(async () => {
     const supabase = createClient()
-    supabase.from('brand_kits').select('*').eq('id', kitId).eq('user_id', userId).single()
-      .then(({ data }) => { setKit(data); setLoading(false) })
+    const { data } = await supabase.from('brand_kits').select('*').eq('id', kitId).eq('user_id', userId).single()
+    setKit(data)
   }, [kitId, userId])
+
+  useEffect(() => {
+    refreshKit().then(() => setLoading(false))
+  }, [refreshKit])
 
   async function handleRegen(tab: string) {
     setRegen(tab); setRegenError(null)
@@ -56,9 +68,7 @@ export default function BrandKitClient({ kitId, userId }: { kitId: string; userI
       })
       const data = await res.json()
       if (data.ok) {
-        const supabase = createClient()
-        const { data: updated } = await supabase.from('brand_kits').select('*').eq('id', kitId).single()
-        setKit(updated)
+        await refreshKit() // Refresh data, tab URL param preserved
       } else {
         setRegenError(data.error || 'Gagal regenerate')
       }
@@ -117,7 +127,7 @@ export default function BrandKitClient({ kitId, userId }: { kitId: string; userI
               </button>
             </div>
             {activeTab === 'strategy' && <StrategyTab data={tabData} />}
-            {activeTab === 'visual' && <VisualTab data={tabData} kitId={kitId} />}
+            {activeTab === 'visual' && <VisualTab data={tabData} kitId={kitId} onLogoLocked={refreshKit} />}
             {activeTab === 'content' && <ContentTab data={tabData} kitId={kitId} />}
             {activeTab === 'whatsapp' && <WhatsappTab data={tabData} />}
             {activeTab === 'checklist' && <ChecklistTab data={tabData} />}
