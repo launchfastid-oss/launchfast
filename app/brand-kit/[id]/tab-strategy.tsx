@@ -6,6 +6,7 @@ interface VisualData {
   typography?: { heading?: { font: string; reason: string }; body?: { font: string; reason: string } }
   logo_concepts?: Array<{ name: string; description: string; style: string }>
   logo_urls?: string[]
+  logo_svgs?: string[]
   logo_prompts?: string[]
   visual_mood?: string
 }
@@ -128,11 +129,14 @@ export function VisualTab({ data, kitId, onLogoLocked }: { data: Record<string, 
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState('')
   const [progress, setProgress] = useState(0)
+  const [selectedLogo, setSelectedLogo] = useState<number | null>(null)
+  const [locking, setLocking] = useState(false)
+  const [lockError, setLockError] = useState('')
 
   // Combine fal URLs and SVG fallbacks into unified logo list
   const allLogoCount = Math.max(
-    (d.logo_urls || []).length,
-    (d.logo_svgs || []).length
+    (d.logo_urls?.length || 0),
+    (d.logo_svgs?.length || 0)
   )
   const validLogos = Array.from({length: allLogoCount}, (_, i) => ({
     url: (d.logo_urls as string[])?.[i] || '',
@@ -140,10 +144,6 @@ export function VisualTab({ data, kitId, onLogoLocked }: { data: Record<string, 
     concept: (d.logo_concepts as Array<{name:string;description:string;style:string}>)?.[i],
     index: i,
   })).filter(l => l.url || l.svg)
-
-  const [selectedLogo, setSelectedLogo] = useState<number | null>(null)
-  const [locking, setLocking] = useState(false)
-  const [lockError, setLockError] = useState('')
 
   async function handlePickLogo(index: number) {
     if (!kitId) return
