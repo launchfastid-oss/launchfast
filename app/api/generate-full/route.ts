@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 
+export const maxDuration = 60
+
 export async function POST(request: Request) {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -54,7 +56,9 @@ Tone of voice: ${ob.tone_of_voice}
 Kisaran harga: ${ob.price_range}
 Goal 30 hari: ${ob.thirty_day_goal}`
 
-    const strategyData = await callAI(`${bizCtx}
+    // Semua 5 AI calls dijalankan PARALEL — dari ~75s menjadi ~15s
+    const [strategyData, visualData, contentData, whatsappData, legalData] = await Promise.all([
+      callAI(`${bizCtx}
 
 Buat strategi brand lengkap dalam Bahasa Indonesia. Return JSON:
 {
@@ -70,9 +74,8 @@ Buat strategi brand lengkap dalam Bahasa Indonesia. Return JSON:
   },
   "unique_value_proposition": "...",
   "brand_story": "cerita brand 2-3 paragraf"
-}`, 3000)
-
-    const visualData = await callAI(`${bizCtx}
+}`, 3000),
+      callAI(`${bizCtx}
 
 Buat visual identity dalam Bahasa Indonesia. Return JSON:
 {
@@ -93,9 +96,8 @@ Buat visual identity dalam Bahasa Indonesia. Return JSON:
     {"style": "Combination Mark", "description": "...", "tagline": "..."}
   ],
   "visual_direction": "..."
-}`)
-
-    const contentData = await callAI(`${bizCtx}
+}`),
+      callAI(`${bizCtx}
 
 Buat rencana konten 30 hari sosial media dalam Bahasa Indonesia. Return JSON:
 {
@@ -109,9 +111,8 @@ Buat rencana konten 30 hari sosial media dalam Bahasa Indonesia. Return JSON:
     {"day": 1, "pillar": "...", "platform": "Instagram", "type": "Carousel", "caption": "...", "hashtags": "..."}
   ]
 }
-Buat 30 posts (hari 1-30), variasikan platform (Instagram, TikTok, Facebook) dan type (Carousel, Reels, Story, Feed Post).`, 4000)
-
-    const whatsappData = await callAI(`${bizCtx}
+Buat 30 posts (hari 1-30), variasikan platform (Instagram, TikTok, Facebook) dan type (Carousel, Reels, Story, Feed Post).`, 4000),
+      callAI(`${bizCtx}
 
 Buat script WhatsApp dalam Bahasa Indonesia. Return JSON:
 {
@@ -119,22 +120,8 @@ Buat script WhatsApp dalam Bahasa Indonesia. Return JSON:
   "follow_up_scripts": [{"name": "Follow Up H+1", "message": "..."}, {"name": "Follow Up H+3", "message": "..."}, {"name": "Follow Up Terakhir", "message": "..."}],
   "closing_scripts": [{"name": "Closing - Harga", "message": "..."}, {"name": "Closing - Perlu Pikir", "message": "..."}, {"name": "Closing - Sudah Ada Provider", "message": "..."}],
   "broadcast_templates": [{"name": "Promo Flash Sale", "message": "..."}, {"name": "Testimoni Customer", "message": "..."}, {"name": "Peluncuran Produk Baru", "message": "..."}]
-}`)
-
-    const checklistData = await callAI(`${bizCtx}
-
-Buat checklist peluncuran bisnis 30 hari dalam Bahasa Indonesia. Return JSON:
-{
-  "weeks": [
-    {"week": 1, "title": "Persiapan Fondasi", "tasks": [{"id": "w1t1", "task": "...", "category": "Brand", "priority": "high", "estimated_hours": 2}]},
-    {"week": 2, "title": "...", "tasks": []},
-    {"week": 3, "title": "...", "tasks": []},
-    {"week": 4, "title": "...", "tasks": []}
-  ]
-}
-Buat 8-10 tasks per minggu. Category: Brand/Digital/Sales/Operations/Legal. Priority: high/medium/low.`, 3000)
-
-    const legalData = await callAI(`${bizCtx}
+}`),
+      callAI(`${bizCtx}
 
 Buat panduan legalitas bisnis dalam Bahasa Indonesia. Return JSON:
 {
@@ -145,7 +132,8 @@ Buat panduan legalitas bisnis dalam Bahasa Indonesia. Return JSON:
   "domain_suggestions": ["nama-bisnis.com", "namabisnis.id"],
   "social_media_handles": ["@namabisnis"],
   "important_notes": ["catatan 1", "catatan 2"]
-}`)
+}`),
+    ])
 
     const { data: brandKit } = await adminClient.from('brand_kits').insert({
       order_id: order_id,
