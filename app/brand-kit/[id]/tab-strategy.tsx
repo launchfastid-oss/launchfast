@@ -123,7 +123,7 @@ export function StrategyTab({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-export function VisualTab({ data, kitId }: { data: Record<string, unknown>; kitId?: string }) {
+export function VisualTab({ data, kitId, onLogoLocked }: { data: Record<string, unknown>; kitId?: string; onLogoLocked?: () => void }) {
   const d = data as VisualData
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState('')
@@ -144,7 +144,7 @@ export function VisualTab({ data, kitId }: { data: Record<string, unknown>; kitI
       })
       const result = await res.json()
       clearInterval(interval); setProgress(100)
-      if (result.ok) setTimeout(() => window.location.reload(), 500)
+      if (result.ok) { if (onLogoLocked) onLogoLocked(); }
       else setGenError(result.error || 'Gagal generate')
     } catch(e) { clearInterval(interval); setGenError(String(e)) }
     setGenerating(false)
