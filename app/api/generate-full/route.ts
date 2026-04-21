@@ -19,9 +19,18 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Auth: Supabase session (client) atau internal key (server-to-server)
     const internalKey = request.headers.get('x-internal-key')
-    if (internalKey !== process.env.MIDTRANS_SERVER_KEY) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const validInternalKey = process.env.INTERNAL_KEY || 'launchfast-internal-2025'
+    
+    if (internalKey !== validInternalKey) {
+      // Coba Supabase session auth
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
     }
 
     const { order_id } = await request.json()
