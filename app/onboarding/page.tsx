@@ -13,7 +13,9 @@ const QUESTIONS = [
   { step: 6, key: 'tone_of_voice', question: 'Tone of voice brand yang kamu inginkan?', type: 'choice', options: ['Profesional & Terpercaya', 'Hangat & Personal', 'Fun & Energik', 'Premium & Eksklusif', 'Santai & Friendly'] },
   { step: 7, key: 'price_range', question: 'Kisaran harga produk/jasa kamu?', hint: 'Contoh: Rp 15.000 - Rp 50.000 per porsi', type: 'textarea' },
   { step: 8, key: 'thirty_day_goal', question: 'Goal utama kamu dalam 30 hari pertama?', hint: 'Contoh: Dapat 50 pelanggan baru dan buka cabang ke-2', type: 'textarea' },
-  { step: 9, key: 'product_image_url', question: 'Upload foto produk kamu (opsional)', hint: 'Foto produk akan dipakai sebagai visual di konten sosial media kamu. Format: JPG/PNG, maks 5MB.', type: 'upload' },
+  { step: 9, key: 'has_existing_logo', question: 'Apakah bisnis kamu sudah punya logo?', hint: 'Kalau sudah punya logo, kamu bisa langsung upload dan konten akan menggunakan logo tersebut.', type: 'choice', options: ['Ya, sudah punya logo', 'Belum, buat logo baru dengan AI'] },
+  { step: 10, key: 'existing_logo_url', question: 'Upload logo bisnis kamu', hint: 'Format PNG atau SVG dengan background transparan lebih bagus. Maks 5MB.', type: 'logo_upload' },
+  { step: 11, key: 'product_image_url', question: 'Upload foto produk kamu (opsional)', hint: 'Foto produk akan dipakai sebagai visual di konten sosial media kamu. Format: JPG/PNG, maks 5MB.', type: 'upload' },
 ] as const
 
 export default function OnboardingPage() {
@@ -29,37 +31,44 @@ export default function OnboardingPage() {
 
   const q = QUESTIONS[currentStep]
   const progress = ((currentStep + 1) / QUESTIONS.length) * 100
-  const isUploadStep = q.type === 'upload'
+  const isUploadStep = q.type === 'upload' || q.type === 'logo_upload'
+  const isLogoQuestion = q.key === 'has_existing_logo'
+  const hasExistingLogo = answers['has_existing_logo'] === 'Ya, sudah punya logo'
+  // Skip step 10 (logo upload) jika user pilih "belum punya logo"
+  // Skip step 10 juga diabaikan dari validasi — handled di handleNext
 
-  async function handleFileSelect(file: File) {
+  async function handleFileSelect(file: File, bucket = 'product-images', answerKey?: string) {
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
       setError('Ukuran file maksimal 5MB')
       return
     }
     setError(null)
-    setUploadProgress('Mengupload foto...')
+    const isLogo = bucket === 'logo_uploads'
+    setUploadProgress(isLogo ? 'Mengupload logo...' : 'Mengupload foto...')
 
     try {
       const supabase = createClient()
       const ext = file.name.split('.').pop() || 'jpg'
-      const filename = 'product-' + Date.now() + '.' + ext
+      const filename = (isLogo ? 'logo-' : 'product-') + Date.now() + '.' + ext
       const path = (onboardingId || 'temp') + '/' + filename
+      const targetBucket = isLogo ? 'product-images' : 'product-images' // pakai bucket sama, beda prefix
 
       const { error: uploadError } = await supabase.storage
-        .from('product-images')
+        .from(targetBucket)
         .upload(path, file, { cacheControl: '3600', upsert: true })
 
       if (uploadError) throw uploadError
 
       const { data: urlData } = supabase.storage
-        .from('product-images')
+        .from(targetBucket)
         .getPublicUrl(path)
 
       const publicUrl = urlData.publicUrl
-      setAnswers(prev => ({ ...prev, [q.key]: publicUrl }))
+      const key = answerKey || q.key
+      setAnswers(prev => ({ ...prev, [key]: publicUrl }))
       setUploadPreview(URL.createObjectURL(file))
-      setUploadProgress('Foto berhasil diupload!')
+      setUploadProgress(isLogo ? 'Logo berhasil diupload! ✓' : 'Foto berhasil diupload! ✓')
     } catch (err) {
       setError('Gagal upload foto: ' + String(err))
       setUploadProgress('')
@@ -67,9 +76,14 @@ export default function OnboardingPage() {
   }
 
   async function handleNext() {
+    // Skip logo upload step jika user pilih "Belum punya logo"
+    if (q.key === 'has_existing_logo' && answers[q.key] === 'Belum, buat logo baru dengan AI') {
+      setCurrentStep(currentStep + 2) // Skip step 10 langsung ke step 11
+      return
+    }
     // Upload step boleh dilewati (opsional)
     if (isUploadStep && !answers[q.key]) {
-      // Skip — lanjut ke preview
+      // Skip â lanjut ke preview
       if (onboardingId) router.push('/preview?onboarding=' + onboardingId)
       return
     }
@@ -138,7 +152,7 @@ export default function OnboardingPage() {
                   type='file'
                   accept='image/*'
                   style={{ display: 'none' }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f) }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f, 'product-images', 'product_image_url') }}
                 />
                 {uploadPreview ? (
                   <div>
@@ -166,6 +180,41 @@ export default function OnboardingPage() {
                     <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#128247;</div>
                     <p style={{ fontSize: '14px', fontWeight: 600, color: '#1D9E75', margin: '0 0 4px' }}>Klik untuk upload foto produk</p>
                     <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>JPG, PNG &bull; Maks 5MB</p>
+                    {uploadProgress && <p style={{ fontSize: '13px', color: '#555', marginTop: '8px' }}>{uploadProgress}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Logo Upload */}
+            {q.type === 'logo_upload' && (
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type='file'
+                  accept='image/png,image/svg+xml,image/jpeg'
+                  style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f, 'logo_uploads', 'existing_logo_url') }}
+                />
+                {uploadPreview ? (
+                  <div>
+                    <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '12px', background: '#F5F5F5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+                      <img src={uploadPreview} alt='Logo Preview' style={{ maxHeight: '160px', maxWidth: '100%', objectFit: 'contain' }} />
+                    </div>
+                    {uploadProgress && <p style={{ fontSize: '13px', color: '#1D9E75', fontWeight: 600, marginBottom: '12px' }}>{uploadProgress}</p>}
+                    <button
+                      onClick={() => { setUploadPreview(null); setAnswers(prev => ({ ...prev, [q.key]: '' })); setUploadProgress('') }}
+                      style={{ fontSize: '13px', color: '#888', background: 'none', border: '1px solid #DDD', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer' }}
+                    >Ganti logo</button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{ border: '2px dashed #1D9E75', borderRadius: '12px', padding: '32px', textAlign: 'center', cursor: 'pointer', background: '#F9FFFE', marginBottom: '12px' }}
+                  >
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🏷️</div>
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#1D9E75', margin: '0 0 4px' }}>Klik untuk upload logo</p>
+                    <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>PNG, SVG &bull; Transparan lebih bagus &bull; Maks 5MB</p>
                     {uploadProgress && <p style={{ fontSize: '13px', color: '#555', marginTop: '8px' }}>{uploadProgress}</p>}
                   </div>
                 )}
@@ -210,7 +259,11 @@ export default function OnboardingPage() {
                 className='btn-primary flex-1'
               >
                 {loading ? 'Menyimpan...' :
-                  isUploadStep ? (uploadPreview ? 'Selesai & Lihat Preview' : 'Lewati, langsung ke preview') :
+                  isUploadStep ? (
+                    q.type === 'logo_upload'
+                      ? (uploadPreview ? 'Lanjut →' : 'Lewati, buat logo dengan AI')
+                      : (uploadPreview ? 'Selesai & Lihat Preview' : 'Lewati, langsung ke preview')
+                  ) :
                   currentStep === QUESTIONS.length - 1 ? 'Lihat preview brand kit' : 'Lanjut'}
               </button>
             </div>
