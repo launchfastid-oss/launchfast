@@ -12,16 +12,26 @@ interface VisualData {
 
 interface StrategyData {
   golden_one_liner?: string
+  brand_narrative?: string
   unique_value_proposition?: string
   brand_personality?: string[]
   stp?: { segmentation?: string; targeting?: string; positioning?: string }
   sb7?: {
-    hero?: { headline?: string; subheadline?: string }
-    problem?: { external?: string; internal?: string; philosophical?: string }
+    hero?: string
+    problem_external?: string
+    problem_internal?: string
+    problem_philosophical?: string
+    guide_empathy?: string
+    guide_authority?: string
     plan?: string[]
     cta_direct?: string
     cta_transitional?: string
     success?: string
+    failure?: string
+    // legacy fields
+    headline?: string
+    subheadline?: string
+    problem?: { external?: string; internal?: string; philosophical?: string }
   }
 }
 
@@ -33,6 +43,12 @@ export function StrategyTab({ data }: { data: Record<string, unknown> }) {
         <div className="card" style={{ background: '#1D9E75', color: 'white' }}>
           <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.75, marginBottom: '8px' }}>Golden One-Liner</p>
           <p style={{ fontSize: '22px', fontWeight: 800, lineHeight: 1.3 }}>"{d.golden_one_liner}"</p>
+        </div>
+      )}
+      {d.brand_narrative && (
+        <div className="card">
+          <p style={{ fontSize: '11px', fontWeight: 700, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Brand Narrative</p>
+          <p style={{ color: '#1A1A1A', lineHeight: 1.8, fontSize: '15px', fontStyle: 'italic' }}>{d.brand_narrative}</p>
         </div>
       )}
       {d.unique_value_proposition && (
@@ -53,7 +69,7 @@ export function StrategyTab({ data }: { data: Record<string, unknown> }) {
       )}
       {d.sb7?.hero && (
         <div className="card">
-          <p style={{ fontSize: '11px', fontWeight: 700, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>StoryBrand — Hero Message</p>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>StoryBrand â Hero Message</p>
           <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#1A1A1A', marginBottom: '8px' }}>{d.sb7.hero.headline}</h3>
           <p style={{ color: '#555555' }}>{d.sb7.hero.subheadline}</p>
           {d.sb7.cta_direct && (
@@ -174,9 +190,9 @@ export function VisualTab({ data, kitId }: { data: Record<string, unknown>; kitI
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
           <div>
-            <p style={{ fontSize: '11px', fontWeight: 700, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Logo AI — Recraft V3</p>
+            <p style={{ fontSize: '11px', fontWeight: 700, color: '#1D9E75', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Logo AI â Recraft V3</p>
             <p style={{ fontSize: '12px', color: '#888888', marginTop: '4px' }}>
-              {validLogos.length > 0 ? `${validLogos.length} logo berhasil dibuat · SOTA image generation` : 'Belum di-generate · Klik tombol untuk mulai'}
+              {validLogos.length > 0 ? `${validLogos.length} logo berhasil dibuat Â· SOTA image generation` : 'Belum di-generate Â· Klik tombol untuk mulai'}
             </p>
           </div>
           <button
@@ -191,9 +207,9 @@ export function VisualTab({ data, kitId }: { data: Record<string, unknown>; kitI
             }}
           >
             {generating ? (
-              <><span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span> Generating {progress}%</>
+              <><span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>â³</span> Generating {progress}%</>
             ) : (
-              <>{validLogos.length > 0 ? '↺ Regenerate' : '✦ Generate Logos AI'}</>
+              <>{validLogos.length > 0 ? 'âº Regenerate' : 'â¦ Generate Logos AI'}</>
             )}
           </button>
         </div>
@@ -236,7 +252,7 @@ export function VisualTab({ data, kitId }: { data: Record<string, unknown>; kitI
                     </div>
                     <a href={url} target="_blank" rel="noopener noreferrer"
                       style={{ fontSize: '12px', color: '#1D9E75', fontWeight: 600, textDecoration: 'none' }}>
-                      Download ↓
+                      Download â
                     </a>
                   </div>
                   {d.logo_concepts?.[i] && (
@@ -250,15 +266,15 @@ export function VisualTab({ data, kitId }: { data: Record<string, unknown>; kitI
 
         {validLogos.length === 0 && !generating && (
           <div style={{ border: '2px dashed #E0E0E0', borderRadius: '16px', padding: '48px', textAlign: 'center' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>✦</div>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>â¦</div>
             <p style={{ fontWeight: 700, color: '#1A1A1A', marginBottom: '4px', fontSize: '16px' }}>Generate Logo dengan AI Terbaik</p>
             <p style={{ fontSize: '13px', color: '#555555', marginBottom: '16px', lineHeight: 1.6 }}>
-              Menggunakan <strong>Recraft V3</strong> — SOTA model untuk logo dan brand identity.<br/>
+              Menggunakan <strong>Recraft V3</strong> â SOTA model untuk logo dan brand identity.<br/>
               3 opsi logo sesuai brand personality kamu.
             </p>
             {(d.logo_concepts || []).map((c, i) => (
               <p key={i} style={{ fontSize: '12px', color: '#888888', marginBottom: '4px' }}>
-                <strong>Opsi {i+1}:</strong> {c.name} — {c.style}
+                <strong>Opsi {i+1}:</strong> {c.name} â {c.style}
               </p>
             ))}
           </div>
