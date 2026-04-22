@@ -242,8 +242,8 @@ Buat panduan legal bisnis dalam Bahasa Indonesia. Kembalikan JSON:
         ? { ...visualData, existing_logo_url: existingLogoUrl, logo_locked: true, locked_logo_url: existingLogoUrl }
         : visualData,
       content_data: hasExistingLogo
-        ? { ...contentData, locked: false, locked_reason: undefined }
-        : contentData,
+        ? { ...contentData, locked: false, locked_reason: null }
+        : { ...contentData, locked: true, locked_reason: 'Pilih dan kunci logo dulu untuk buka konten 30 hari.' },
       whatsapp_data: whatsappData,
       checklist_data: checklistData,
       legal_data: legalData,
