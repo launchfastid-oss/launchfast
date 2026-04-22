@@ -7,7 +7,7 @@ Live: launchfast-git-main-launchfastid-oss-projects.vercel.app
 GitHub: launchfastid-oss/launchfast (public)
 Supabase: fglpqokvsuiqukyrikih.supabase.co
 
-## PROGRESS: ~45% (April 22, 2026)
+## PROGRESS: ~52% (April 22, 2026 - post sesi 8 batch 1)
 
 ### DONE
 - Auth, Onboarding 11 langkah, Payment bypass (test)
@@ -15,15 +15,16 @@ Supabase: fglpqokvsuiqukyrikih.supabase.co
 - Tab routing URL param (?tab=)
 - Strategi tab (SB7, encoding clean, regenerate)
 - Checklist tab, WA Scripts tab, Legal tab
+- [sesi 8] Fix content_data.locked default (Priority #1)
+- [sesi 8] AI_QUALITY_MODE env var toggle for Sonnet/Haiku (Priority #6)
+- [sesi 8] Confirmed: generate-post-images sudah connected (Priority #4 dropped)
 
 ### BUGGY
 - Visual/Logo: 3 logo tampil, Pilih button ada, lock state tidak smooth
-- Konten: content_data.locked sering undefined -> banner tidak muncul
 - Landing page: route ada, output pendek
 
 ### DISCONNECTED (ada di codebase, tidak di UI)
-- generate-post-images route -> tidak ada tombol di tab-content
-- generate-post-video route -> tidak ada tombol di tab-content
+- generate-post-video route -> tidak ada tombol di tab-content (lowpri, verifikasi dulu sebelum fix seperti post-images)
 
 ### MISSING
 - Guided step-by-step flow (tab lock/unlock berurutan)
@@ -32,12 +33,14 @@ Supabase: fglpqokvsuiqukyrikih.supabase.co
 - Midtrans payment live
 
 ## PRIORITY NEXT SESSION
-1. Fix generate-full: content_data locked:true + 30 posts dengan caption
-2. Implement guided flow: tab lock/unlock berurutan + progress indicator global
-3. Upgrade logo: test Ideogram V2 via fal.ai
-4. Connect generate-post-images ke UI (tombol per post)
-5. Fix landing page: prompt detail + auto-generate setelah logo lock
-6. Upgrade konten model ke Claude Sonnet
+1. ~~Fix generate-full locked~~ DONE sesi 8
+2. Implement guided flow: tab lock/unlock berurutan + progress indicator global (Batch 2 sesi 9)
+3. Upgrade logo: test Ideogram V2 via fal.ai (Batch 3)
+4. ~~Connect generate-post-images~~ CONFIRMED already connected sesi 8
+5. Fix landing page: prompt detail + auto-generate setelah logo lock (Batch 3)
+6. ~~Upgrade konten model~~ DONE sesi 8 (env var toggle)
+
+Sesi 9 start dengan Batch 2 (#2 guided flow). Baca SESSION_LOG.md untuk detail handoff.
 
 ## USER FLOW (GUIDED - target UMKM kurang tech-savvy)
 TAB 1 STRATEGI -> CTA "Lanjut ke Visual"
@@ -109,6 +112,8 @@ ALTER TABLE onboarding_answers ADD COLUMN IF NOT EXISTS has_existing_logo TEXT, 
 - React hooks: useState SEBELUM kondisi/return apapun
 - Suspense: useSearchParams harus di-wrap Suspense di parent
 - SELALU run SQL migration di Supabase sebelum push kolom baru
+- ENV VARS: AI_QUALITY_MODE (premium | unset) controls Sonnet vs Haiku. Set di Vercel production env only.
+- Multi-file GitHub push: sequential, bukan parallel (race condition 409)
 
 ## QUALITY STANDARDS
 Logo: Professional, sesuai bisnis, test Ideogram V2 (support teks dalam logo)
