@@ -60,10 +60,17 @@ PROBLEM: Jika content_data = {} maka locked banner tidak muncul (data.locked ===
 /api/regenerate       - Regen satu tab (max 3x)
 
 ## AI MODELS
-Strategy/WA/Checklist/Legal: claude-haiku-4-5-20251001
-Content 30 hari: claude-haiku-4-5-20251001 (PERLU upgrade ke Sonnet)
-Landing page: claude-sonnet-4-5-20250929
+Controlled via env var AI_QUALITY_MODE:
+- "premium" -> Strategy+Content+Landing pakai claude-sonnet-4-5-20250929; WA+Legal tetap claude-haiku-4-5-20251001
+- anything else (incl. unset) -> semua pakai claude-haiku-4-5-20251001 (cheap dev mode)
+Checklist: auto-generated, no AI.
 Logo: fal.ai Recraft V3 vector_illustration (PERLU upgrade ke Ideogram V2)
+
+Cost est per kit:
+- cheap: ~$0.08 AI + fal.ai
+- premium: ~$0.30 AI + fal.ai
+
+Set di Vercel production env: AI_QUALITY_MODE=premium
 
 ## KEY FILES
 app/api/generate-full/route.ts
