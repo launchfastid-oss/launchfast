@@ -8,9 +8,12 @@ export const maxDuration = 60
 export async function POST(request: Request) {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-  async function callAI(prompt: string, maxTokens = 2000): Promise<Record<string, unknown>> {
+  const PREMIUM_ENABLED = process.env.AI_QUALITY_MODE === 'premium'
+  async function callAI(prompt: string, maxTokens = 2000, opts: { quality?: 'standard' | 'premium' } = {}): Promise<Record<string, unknown>> {
+    const usePremium = opts.quality === 'premium' && PREMIUM_ENABLED
+    const model = usePremium ? 'claude-sonnet-4-5-20250929' : 'claude-haiku-4-5-20251001'
     const res = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model,
       max_tokens: maxTokens,
       system: 'Kamu adalah brand strategist expert untuk UMKM Indonesia. Kembalikan HANYA JSON valid tanpa markdown, backtick, atau teks tambahan apapun.',
       messages: [{ role: 'user', content: prompt }]
@@ -81,7 +84,7 @@ PENTING untuk Golden One-Liner: gunakan format StoryBrand yang tepat:
 Untuk Brand Narrative: tulis SATU PARAGRAF DESKRIPTIF (3-4 kalimat) yang menjawab semua 7 elemen StoryBrand secara mengalir - jangan daftar, jangan bullet points. Paragraf harus menceritakan: siapa hero (customer), masalah eksternal+internal+filosofis yang mereka hadapi, bagaimana bisnis ini jadi guide dengan empati dan otoritas, apa rencana 3 langkah simple, apa CTA yang jelas, gambaran success jika ikut, dan konsekuensi jika tidak.
 
 Kembalikan JSON:
-{"golden_one_liner":"Kami membantu [target] yang [masalah] dengan [solusi], sehingga mereka [hasil]","brand_narrative":"Satu paragraf deskriptif 3-4 kalimat yang mengalir menjawab 7 elemen SB7","stp":{"segmentation":"deskripsi segmentasi","targeting":"target utama","positioning":"positioning statement"},"sb7":{"hero":"deskripsi hero/customer","problem_external":"masalah yang terlihat","problem_internal":"perasaan frustrasi dalam","problem_philosophical":"kenapa ini tidak adil","guide_empathy":"kalimat empati brand","guide_authority":"bukti otoritas brand","plan":["langkah 1 simple","langkah 2 simple","langkah 3 simple"],"cta_direct":"CTA utama","cta_transitional":"CTA soft","success":"gambaran hidup customer setelah pakai produk","failure":"konsekuensi jika tidak bertindak"},"unique_value_proposition":"UVP satu kalimat kuat"}`, 2500),
+{"golden_one_liner":"Kami membantu [target] yang [masalah] dengan [solusi], sehingga mereka [hasil]","brand_narrative":"Satu paragraf deskriptif 3-4 kalimat yang mengalir menjawab 7 elemen SB7","stp":{"segmentation":"deskripsi segmentasi","targeting":"target utama","positioning":"positioning statement"},"sb7":{"hero":"deskripsi hero/customer","problem_external":"masalah yang terlihat","problem_internal":"perasaan frustrasi dalam","problem_philosophical":"kenapa ini tidak adil","guide_empathy":"kalimat empati brand","guide_authority":"bukti otoritas brand","plan":["langkah 1 simple","langkah 2 simple","langkah 3 simple"],"cta_direct":"CTA utama","cta_transitional":"CTA soft","success":"gambaran hidup customer setelah pakai produk","failure":"konsekuensi jika tidak bertindak"},"unique_value_proposition":"UVP satu kalimat kuat"}`, 2500, { quality: 'premium' }),
 
       // VISUAL: 3 logo concepts WAJIB
       callAI(`${ctx}
@@ -115,7 +118,7 @@ Kembalikan JSON LENGKAP dengan 30 posts:
 
 WAJIB: Buat tepat 30 posts untuk hari 1-30, campuran Instagram dan TikTok, berbagai tipe konten (Foto Produk, Carousel, Video, Story, Quote, Behind the Scene, Testimoni, Edukasi, Promo).
 Caption harus spesifik untuk bisnis ini, bukan template.
-`, 4000),
+`, 4000, { quality: 'premium' }),
 
       // WHATSAPP SCRIPTS
       callAI(`${ctx}
@@ -220,7 +223,8 @@ Buat panduan legal bisnis dalam Bahasa Indonesia. Kembalikan JSON:
         'UVP: ' + uvp + '. One-liner: ' + oneLiner + '. Warna: ' + primaryColor + '. ' +
         'Buat HTML modern mobile-friendly dengan: hero section, problem/solution, 3 fitur, CTA WhatsApp. ' +
         'JSON: {"html":"<!DOCTYPE html>...(full HTML)..."} - HTML harus lengkap dan valid.',
-        4000
+        4000,
+        { quality: 'premium' }
       )
       landingPageHtml = String((lpData as Record<string,unknown>).html || '')
     } catch(lpErr) {
