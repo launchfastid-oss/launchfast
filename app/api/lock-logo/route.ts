@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     }
 
     const content = (kit.content_data || {}) as Record<string, unknown>
-    const updatedContent = { ...content, locked: false }
+    const updatedContent = { ...content, locked: false, locked_reason: null }
 
     await adminClient.from('brand_kits').update({
       visual_data: updatedVisual,
